@@ -1,0 +1,188 @@
+import "server-only";
+import { cache } from "react";
+import { auth } from "@clerk/nextjs/server";
+import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_CATEGORIES, KINDS, addMonths, monthKey, monthRange, monthlyEquivalent, round2 } from "@/lib/money";
+import type { Budget, Contractor, Direction, MonthSummary, Recurring, Transaction, TxnKind } from "@/lib/types";
+
+/** Signed-in Clerk user id, or redirect to sign-in. Call at the top of every (app) page (the proxy also guards). */
+export const requireUser = cache(async () => {
+  const { userId, redirectToSignIn } = await auth();
+  if (!userId) return redirectToSignIn();
+  return userId;
+});
+
+function fail(what: string, error: { message: string }): never {
+  throw new Error(`${what}: ${error.message}`);
+}
+
+export type TxnFilters = {
+  month?: string; // YYYY-MM
+  from?: string; // YYYY-MM-DD inclusive
+  to?: string; // YYYY-MM-DD inclusive
+  kind?: TxnKind;
+  direction?: Direction;
+  q?: string;
+  contractorId?: string;
+  limit?: number;
+};
+
+// PostgREST caps each response at the project's max_rows (Supabase default 1000), so fetch in pages.
+const PAGE = 1000;
+
+export async function getTransactions(f: TxnFilters = {}): Promise<Transaction[]> {
+  const supabase = await createClient();
+  const build = () => {
+    let query = supabase
+      .from("transactions")
+      .select("*")
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id"); // stable order so pages don't overlap
+    if (f.month) {
+      const { from, to } = monthRange(f.month);
+      query = query.gte("date", from).lte("date", to);
+    }
+    if (f.from) query = query.gte("date", f.from);
+    if (f.to) query = query.lte("date", f.to);
+    if (f.kind) query = query.eq("kind", f.kind);
+    if (f.direction) query = query.eq("direction", f.direction);
+    if (f.contractorId) query = query.eq("contractor_id", f.contractorId);
+    if (f.q) {
+      // Strip PostgREST filter syntax characters so user text can't change the filter.
+      const q = f.q.replace(/[,()*%\\]/g, " ").trim().slice(0, 80);
+      if (q) query = query.or(`description.ilike.%${q}%,vendor.ilike.%${q}%,category.ilike.%${q}%`);
+    }
+    return query;
+  };
+  const max = f.limit ?? 500;
+  const rows: Transaction[] = [];
+  for (let start = 0; start < max; start += PAGE) {
+    const end = Math.min(start + PAGE, max) - 1;
+    const { data, error } = await build().range(start, end);
+    if (error) fail("Load transactions", error);
+    rows.push(...(data as Transaction[]));
+    if (data.length < end - start + 1) break;
+  }
+  return rows;
+}
+
+/** Count and In/Out USD totals for a filter set, across all rows (not capped like the list). */
+export async function getTransactionTotals(f: Omit<TxnFilters, "limit">) {
+  const rows = await getTransactions({ ...f, limit: 1_000_000 });
+  let inUsd = 0;
+  let outUsd = 0;
+  for (const t of rows) {
+    if (t.direction === "in") inUsd += t.amount_usd;
+    else outUsd += t.amount_usd;
+  }
+  return { count: rows.length, inUsd: round2(inUsd), outUsd: round2(outUsd) };
+}
+
+export async function getTransaction(id: string): Promise<Transaction | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("transactions").select("*").eq("id", id).maybeSingle();
+  if (error) fail("Load transaction", error);
+  return data as Transaction | null;
+}
+
+export async function getLifetimeDeals() {
+  return getTransactions({ kind: "lifetime" });
+}
+
+export async function getRecurring(): Promise<Recurring[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("recurring").select("*").order("next_due", { ascending: true });
+  if (error) fail("Load recurring", error);
+  return data as Recurring[];
+}
+
+export const getContractors = cache(async (): Promise<Contractor[]> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("contractors").select("*").order("active", { ascending: false }).order("name");
+  if (error) fail("Load contractors", error);
+  return data as Contractor[];
+});
+
+export async function getContractor(id: string): Promise<Contractor | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("contractors").select("*").eq("id", id).maybeSingle();
+  if (error) fail("Load contractor", error);
+  return data as Contractor | null;
+}
+
+export async function getBudgets(): Promise<Budget[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("budgets").select("id, category, monthly_limit_usd").order("category");
+  if (error) fail("Load budgets", error);
+  return data as Budget[];
+}
+
+/** Defaults plus every category already used, for pickers. */
+export const getCategories = cache(async (): Promise<string[]> => {
+  const supabase = await createClient();
+  const [t, r] = await Promise.all([
+    supabase.from("transactions").select("category").limit(1000),
+    supabase.from("recurring").select("category"),
+  ]);
+  const used = [...(t.data ?? []), ...(r.data ?? [])].map((x) => x.category as string);
+  return [...new Set([...DEFAULT_CATEGORIES, ...used])].sort((a, b) => a.localeCompare(b));
+});
+
+export function summarize(month: string, txns: Transaction[], recurring: Recurring[]): MonthSummary {
+  const byKind = Object.fromEntries(Object.keys(KINDS).map((k) => [k, 0])) as Record<TxnKind, number>;
+  const cats = new Map<string, number>();
+  let inUsd = 0;
+  let outUsd = 0;
+  for (const t of txns) {
+    // Income counts money in; every other kind counts money out (a refund on a tool doesn't inflate its spend).
+    if ((t.kind === "income") === (t.direction === "in")) byKind[t.kind] += t.amount_usd;
+    if (t.direction === "in") inUsd += t.amount_usd;
+    else {
+      outUsd += t.amount_usd;
+      cats.set(t.category, (cats.get(t.category) ?? 0) + t.amount_usd);
+    }
+  }
+  let recurringOutMonthlyUsd = 0;
+  let recurringInMonthlyUsd = 0;
+  for (const r of recurring) {
+    if (r.status !== "active") continue;
+    const m = monthlyEquivalent(r.amount_usd, r.billing_interval);
+    if (r.direction === "out") recurringOutMonthlyUsd += m;
+    else recurringInMonthlyUsd += m;
+  }
+  return {
+    month,
+    inUsd: round2(inUsd),
+    outUsd: round2(outUsd),
+    netUsd: round2(inUsd - outUsd),
+    byKind,
+    byCategory: [...cats].map(([category, v]) => ({ category, outUsd: round2(v) })).sort((a, b) => b.outUsd - a.outUsd),
+    recurringOutMonthlyUsd: round2(recurringOutMonthlyUsd),
+    recurringInMonthlyUsd: round2(recurringInMonthlyUsd),
+  };
+}
+
+export async function getMonthSummary(month = monthKey()): Promise<MonthSummary> {
+  const [txns, recurring] = await Promise.all([getTransactions({ month, limit: 100_000 }), getRecurring()]);
+  return summarize(month, txns, recurring);
+}
+
+/** In/out per month for the last `months` months (oldest first), for bar charts. */
+export async function getMonthlySeries(months = 6) {
+  const current = monthKey();
+  const keys = Array.from({ length: months }, (_, i) => addMonths(current, i - (months - 1)));
+  const data = await getTransactions({
+    from: monthRange(keys[0]).from,
+    to: monthRange(keys[keys.length - 1]).to,
+    limit: 100_000,
+  });
+  const rows = new Map(keys.map((k) => [k, { month: k, inUsd: 0, outUsd: 0 }]));
+  for (const t of data) {
+    const row = rows.get(t.date.slice(0, 7));
+    if (!row) continue;
+    if (t.direction === "in") row.inUsd += t.amount_usd;
+    else row.outUsd += t.amount_usd;
+  }
+  return [...rows.values()].map((r) => ({ ...r, inUsd: round2(r.inUsd), outUsd: round2(r.outUsd) }));
+}
