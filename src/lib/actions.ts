@@ -94,6 +94,7 @@ export type TransactionInput = {
   category: string;
   vendor?: string | null;
   contractor_id?: string | null;
+  client_id?: string | null;
   replaces_monthly_usd?: number | null;
   notes?: string | null;
 };
@@ -112,6 +113,7 @@ function parseTransaction(i: TransactionInput) {
     category: text(i.category, "Category", { max: 60 }) ?? "Other",
     vendor: text(i.vendor, "Vendor", { max: 120 }),
     contractor_id: optionalUuid(i.contractor_id, "Contractor"),
+    client_id: optionalUuid(i.client_id, "Client"),
     replaces_monthly_usd: kind === "lifetime" ? optionalPositive(i.replaces_monthly_usd, "Replaces per month") : null,
     notes: text(i.notes, "Notes", { max: 2000 }),
   };
@@ -123,6 +125,15 @@ export async function createTransaction(input: TransactionInput) {
 
 export async function updateTransaction(id: string, input: TransactionInput) {
   return run(async () => (await createClient()).from("transactions").update(parseTransaction(input)).eq("id", uuid(id, "id")));
+}
+
+/** Undo for deleteTransaction: re-inserts the same row (same id) from the copy the client kept. */
+export async function restoreTransaction(row: TransactionInput & { id: string; recurring_id?: string | null }) {
+  return run(async () =>
+    (await createClient())
+      .from("transactions")
+      .insert({ ...parseTransaction(row), id: uuid(row.id, "id"), recurring_id: optionalUuid(row.recurring_id, "Plan") }),
+  );
 }
 
 export async function deleteTransaction(id: string) {
@@ -143,6 +154,8 @@ export type RecurringInput = {
   category: string;
   status: RecurringStatus;
   contractor_id?: string | null;
+  client_id?: string | null;
+  trial_ends?: string | null;
   url?: string | null;
   notes?: string | null;
 };
@@ -163,6 +176,8 @@ function parseRecurring(i: RecurringInput) {
     category: text(i.category, "Category", { max: 60 }) ?? "Software",
     status: oneOf(i.status, STATUSES, "Status"),
     contractor_id: optionalUuid(i.contractor_id, "Contractor"),
+    client_id: optionalUuid(i.client_id, "Client"),
+    trial_ends: i.trial_ends ? isoDate(i.trial_ends, "Trial ends") : null,
     url,
     notes: text(i.notes, "Notes", { max: 2000 }),
   };
@@ -180,6 +195,11 @@ export async function setRecurringStatus(id: string, status: RecurringStatus) {
   return run(async () =>
     (await createClient()).from("recurring").update({ status: oneOf(status, STATUSES, "Status") }).eq("id", uuid(id, "id")),
   );
+}
+
+/** Undo for deleteRecurring. */
+export async function restoreRecurring(row: RecurringInput & { id: string }) {
+  return run(async () => (await createClient()).from("recurring").insert({ ...parseRecurring(row), id: uuid(row.id, "id") }));
 }
 
 export async function deleteRecurring(id: string) {
@@ -264,4 +284,114 @@ export async function upsertBudget(category: string, monthlyLimitUsd: number) {
 
 export async function deleteBudget(id: string) {
   return run(async () => (await createClient()).from("budgets").delete().eq("id", uuid(id, "id")));
+}
+
+/* ---------- clients / projects ---------- */
+
+export type ClientInput = { name: string; color?: string | null; archived?: boolean };
+
+function parseClient(i: ClientInput) {
+  const color = text(i.color, "Color", { max: 7 });
+  if (color && !/^#[0-9a-f]{6}$/.test(color)) throw new Invalid("Color must be a hex like #3d4bd6");
+  return { name: text(i.name, "Name", { required: true, max: 120 })!, color, archived: Boolean(i.archived) };
+}
+
+export async function createClientRecord(input: ClientInput) {
+  return run(async () => (await createClient()).from("clients").insert(parseClient(input)));
+}
+
+export async function updateClientRecord(id: string, input: ClientInput) {
+  return run(async () => (await createClient()).from("clients").update(parseClient(input)).eq("id", uuid(id, "id")));
+}
+
+export async function deleteClientRecord(id: string) {
+  return run(async () => (await createClient()).from("clients").delete().eq("id", uuid(id, "id")));
+}
+
+/* ---------- settings ---------- */
+
+export type SettingsInput = { tax_rate: number; cash_on_hand_usd: number | null };
+
+export async function saveSettings(input: SettingsInput) {
+  return run(async () => {
+    const tax = Number(input.tax_rate);
+    if (!Number.isFinite(tax) || tax < 0 || tax > 100) throw new Invalid("Tax set-aside must be 0–100%");
+    const cash = optionalPositive(input.cash_on_hand_usd, "Cash on hand");
+    const row: Record<string, unknown> = { tax_rate: tax, cash_on_hand_usd: cash, updated_at: new Date().toISOString() };
+    if (cash !== null) row.cash_updated_at = new Date().toISOString();
+    return (await createClient()).from("user_settings").upsert(row, { onConflict: "user_id" });
+  });
+}
+
+/** Turns the private calendar feed on (new secret) or off (null). Rotating invalidates the old URL. */
+export async function setCalendarFeed(on: boolean) {
+  return run(async () => {
+    const token = on ? Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url") : null;
+    return (await createClient()).from("user_settings").upsert({ calendar_token: token }, { onConflict: "user_id" });
+  });
+}
+
+/* ---------- onboarding ---------- */
+
+/** One-tap sample data for an empty account, so the app has something to show. */
+export async function loadSampleData() {
+  return run(async () => {
+    const supabase = await createClient();
+    const { count } = await supabase.from("transactions").select("id", { count: "exact", head: true });
+    if (count) throw new Invalid("Sample data is only for an empty account");
+    const day = (n: number) => {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() + n);
+      return d.toISOString().slice(0, 10);
+    };
+    const { data: client, error: ce } = await supabase.from("clients").insert({ name: "Acme Co", color: "#3d4bd6" }).select("id").single();
+    if (ce) return { error: ce };
+    const { data: dev, error: de } = await supabase
+      .from("contractors")
+      .insert({ name: "Alex Rivera", role: "Frontend dev", rate: 3200, rate_type: "monthly", currency: "USD" })
+      .select("id")
+      .single();
+    if (de) return { error: de };
+    const rec = await supabase.from("recurring").insert([
+      { name: "Figma Professional", vendor: "Figma", direction: "out", amount: 45, billing_interval: "monthly", next_due: day(3), category: "Design tools" },
+      { name: "Vercel Pro", vendor: "Vercel", direction: "out", amount: 20, billing_interval: "monthly", next_due: day(9), category: "Hosting" },
+      { name: "Google Workspace", vendor: "Google", direction: "out", amount: 168, billing_interval: "yearly", next_due: day(120), category: "Software" },
+      { name: "Notion Plus", vendor: "Notion", direction: "out", amount: 10, billing_interval: "monthly", next_due: day(12), category: "Software", trial_ends: day(5) },
+      { name: "Retainer · Acme Co", direction: "in", amount: 2400, billing_interval: "monthly", next_due: day(6), category: "Client work", client_id: client.id },
+    ]);
+    if (rec.error) return rec;
+    return supabase.from("transactions").insert([
+      { date: day(-1), direction: "in", kind: "income", amount: 3500, description: "Website build · Acme Co", category: "Client work", client_id: client.id },
+      { date: day(-3), direction: "out", kind: "subscription", amount: 45, description: "Figma Professional", category: "Design tools", vendor: "Figma" },
+      { date: day(-5), direction: "out", kind: "contractor", amount: 1600, description: "Payout · Alex Rivera", category: "Contractors", contractor_id: dev.id, client_id: client.id },
+      { date: day(-9), direction: "out", kind: "lifetime", amount: 69, description: "TidyCal lifetime", category: "Software", vendor: "AppSumo", replaces_monthly_usd: 12 },
+      { date: day(-12), direction: "out", kind: "one_time", amount: 1299, description: "Studio display", category: "Hardware" },
+      { date: day(-34), direction: "in", kind: "income", amount: 2400, description: "Retainer · Acme Co", category: "Client work", client_id: client.id },
+      { date: day(-40), direction: "out", kind: "expense", amount: 220, description: "Ads test", category: "Marketing" },
+    ]);
+  });
+}
+
+/* ---------- CSV import ---------- */
+
+/** Bulk insert parsed rows (max 2000 per call). Each row is validated like a manual entry; one bad row fails the batch. */
+export async function importTransactions(rows: TransactionInput[]): Promise<ActionResult & { count?: number }> {
+  if (!Array.isArray(rows) || rows.length === 0) return { ok: false, error: "No rows to import" };
+  if (rows.length > 2000) return { ok: false, error: "Import at most 2000 rows at a time" };
+  let parsed;
+  try {
+    parsed = rows.map((r, i) => {
+      try {
+        return parseTransaction(r);
+      } catch (e) {
+        if (e instanceof Invalid) throw new Invalid(`Row ${i + 1}: ${e.message}`);
+        throw e;
+      }
+    });
+  } catch (e) {
+    if (e instanceof Invalid) return { ok: false, error: e.message };
+    throw e;
+  }
+  const res = await run(async () => (await createClient()).from("transactions").insert(parsed));
+  return res.ok ? { ok: true, count: parsed.length } : res;
 }

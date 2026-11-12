@@ -1,3 +1,5 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: brand (kept) · nav: the app shell (kept) · signature: the money figure (kept) · states: default, hover, focus, active, disabled, loading, empty, error
+ * modes: light+dark · axes: kept · contrast: pass · v2.0.0 */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -5,6 +7,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Colour, radius and shadow utilities. Values live in :root below. */
 @theme inline {
   --color-background: var(--background);
   --color-brand: var(--brand);
@@ -14,7 +17,11 @@
   --color-chart-in: var(--chart-in);
   --color-chart-out: var(--chart-out);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-mono-ui);
+  --color-surface-0: var(--background);
+  --color-surface-1: var(--card);
+  --color-surface-2: var(--popover);
+  --color-scrim: var(--scrim);
+  --font-sans: var(--font-sans-ui);
   --font-mono: var(--font-mono-ui);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -46,106 +53,357 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /* Radius on a 10px base: xs 4 tags · sm 6 chips · md 8 buttons, inputs · lg 12 cards, menus · xl 16 hero, dialogs · 2xl 20 sheet top */
+  --radius-xs: calc(var(--radius) * 0.4);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-lg: calc(var(--radius) * 1.2);
+  --radius-xl: calc(var(--radius) * 1.6);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 2.4);
+  --radius-4xl: calc(var(--radius) * 2.8);
+
+  /* Layered soft shadows (Stripe). Each starts with a 1px hairline, so a card needs no extra border.
+     Dark mode drops the soft layers; only the hairline and overlay depth remain. */
+  --shadow-card: 0 0 0 1px var(--elev-edge), 0 1px 1px var(--elev-soft), 0 2px 4px -1px var(--elev-soft);
+  --shadow-raised: 0 0 0 1px var(--elev-edge), 0 2px 4px var(--elev-soft), 0 8px 16px -4px var(--elev-mid);
+  --shadow-overlay: 0 0 0 1px var(--elev-edge), 0 4px 8px var(--elev-soft), 0 16px 32px -8px var(--elev-deep), 0 32px 64px -16px var(--elev-mid);
+  --shadow-button: 0 1px 1px var(--elev-soft), 0 1px 3px var(--elev-mid);
+  --inset-shadow-highlight: inset 0 1px 0 var(--highlight);
 }
 
+/* Motion tokens (docs/MOTION-SPEC.md § 1). `static` keeps every variable in :root for var() use. */
+@theme static {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring-soft: linear(0, 0.2 6%, 0.58 15%, 0.86 26%, 1.02 38%, 1.05 46%, 1.03 56%, 1 72%, 0.995 86%, 1);
+  --ease-spring-pop: linear(0, 0.32 8%, 0.78 17%, 1.1 29%, 1.12 36%, 1.04 50%, 0.99 64%, 1.003 80%, 1);
+  --default-transition-duration: var(--dur-fast);
+  --default-transition-timing-function: var(--ease-out);
+
+  --animate-fade-up: fade-up var(--dur-base) var(--ease-out) calc(var(--i, 0) * var(--stagger)) both;
+  --animate-pop: pop var(--dur-slow) var(--ease-spring-pop);
+  --animate-shake: shake 240ms var(--ease-inout);
+  --animate-flash: flash 1200ms var(--ease-out);
+
+  @keyframes fade-up {
+    from { opacity: 0; translate: 0 4px; }
+  }
+  @keyframes pop {
+    from { scale: 0.92; }
+  }
+  @keyframes shake {
+    20%, 60% { translate: -4px 0; }
+    40%, 80% { translate: 4px 0; }
+  }
+  @keyframes flash {
+    from { background-color: color-mix(in oklab, var(--brand) 10%, transparent); }
+  }
+}
+
+/* Every colour is light-dark(light, dark); `color-scheme` on :root and .dark picks the side. */
 :root {
-  --background: #f6f6f3;
-  --foreground: #15171a;
-  --card: #ffffff;
-  --card-foreground: #15171a;
-  --popover: #ffffff;
-  --popover-foreground: #15171a;
-  --primary: #15171a;
-  --primary-foreground: #f6f6f3;
-  --secondary: #eeeeea;
-  --secondary-foreground: #15171a;
-  --muted: #eeeeea;
-  --muted-foreground: #5f6368;
-  --accent: #eeeeea;
-  --accent-foreground: #15171a;
-  --brand: #3d4bd6;
-  --destructive: #b3261e;
-  --money-in: #17703f;
-  --money-out: #b3261e;
-  --warn: #8a5a00;
-  --border: #e6e6e1;
-  --input: #e6e6e1;
-  --ring: #3d4bd6;
-  --chart-1: #3d4bd6;
-  --chart-2: #15171a;
-  --chart-3: #5f6a85;
-  --chart-4: #8e96ad;
-  --chart-5: #c9cbd0;
-  --chart-in: #17703f;
-  --chart-out: #15171a;
-  --radius: 0.375rem;
-  --sidebar: #efefeb;
-  --sidebar-foreground: #15171a;
-  --sidebar-primary: #15171a;
-  --sidebar-primary-foreground: #f6f6f3;
-  --sidebar-accent: #e4e4df;
-  --sidebar-accent-foreground: #15171a;
-  --sidebar-border: #e6e6e1;
-  --sidebar-ring: #3d4bd6;
+  color-scheme: light;
+
+  --dur-instant: 90ms;
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 360ms;
+  --spring-soft: var(--ease-spring-soft);
+  --spring-pop: var(--ease-spring-pop);
+  --press-scale: 0.97;
+  --stagger: 35ms;
+
+  --radius: 0.625rem;
+
+  /* Surfaces: L0 page, L1 card, L2 popover/sheet. Dark steps lighter per level. */
+  --background: light-dark(#f5f6f8, #0b0c0e);
+  --card: light-dark(#fdfdfd, #16181b);
+  --popover: light-dark(#fefefe, #1f2226);
+  --foreground: light-dark(#14161a, #f1f2f4);
+  --card-foreground: var(--foreground);
+  --popover-foreground: var(--foreground);
+  --primary: light-dark(#14161a, #f1f2f4);
+  --primary-foreground: light-dark(#f5f6f8, #0b0c0e);
+  --secondary: light-dark(#eceef1, #24272c);
+  --secondary-foreground: var(--foreground);
+  --muted: light-dark(#eceef1, #24272c);
+  --muted-foreground: light-dark(#5d636c, #9ba1aa);
+  --accent: light-dark(#eceef1, #24272c);
+  --accent-foreground: var(--foreground);
+  --border: light-dark(#e3e5e9, #2a2d32);
+  --input: light-dark(#d9dce1, #33373d);
+  --scrim: light-dark(rgb(15 23 42 / 0.32), rgb(0 0 0 / 0.6));
+
+  /* Accents. Text contrast on L0, L1 and muted is >= 4.5:1 in both modes. */
+  --brand: light-dark(#4b4fd1, #959dff);
+  --ring: var(--brand);
+  --destructive: light-dark(#c23b3b, #ff8a80);
+  --money-in: light-dark(#0f7646, #3ecf8e);
+  --money-out: light-dark(#c23b3b, #ff8a80);
+  --warn: light-dark(#8f5b00, #f0b44a);
+
+  --chart-1: var(--brand);
+  --chart-2: var(--foreground);
+  --chart-3: light-dark(#5f6a85, #8a93a8);
+  --chart-4: light-dark(#8e96ad, #5c6375);
+  --chart-5: light-dark(#c9cbd0, #3a3e44);
+  --chart-in: var(--money-in);
+  --chart-out: var(--foreground);
+
+  --sidebar: light-dark(#eef0f3, #101114);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: light-dark(#e3e6ea, #1d2024);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--brand);
+
+  /* Shadow inks (blue-grey, low alpha). */
+  --elev-edge: light-dark(rgb(15 23 42 / 0.07), rgb(255 255 255 / 0.08));
+  --elev-soft: light-dark(rgb(15 23 42 / 0.05), transparent);
+  --elev-mid: light-dark(rgb(15 23 42 / 0.08), rgb(0 0 0 / 0.35));
+  --elev-deep: light-dark(rgb(15 23 42 / 0.14), rgb(0 0 0 / 0.5));
+  --highlight: light-dark(rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.5));
+  --skeleton-shine: light-dark(rgb(255 255 255 / 0.7), rgb(255 255 255 / 0.06));
 }
 
 .dark {
-  --background: #0c0d0f;
-  --foreground: #f2f3f4;
-  --card: #16181b;
-  --card-foreground: #f2f3f4;
-  --popover: #16181b;
-  --popover-foreground: #f2f3f4;
-  --primary: #f2f3f4;
-  --primary-foreground: #0c0d0f;
-  --secondary: #202327;
-  --secondary-foreground: #f2f3f4;
-  --muted: #202327;
-  --muted-foreground: #9aa0a6;
-  --accent: #202327;
-  --accent-foreground: #f2f3f4;
-  --brand: #8e99ff;
-  --destructive: #ff8f86;
-  --money-in: #5fd491;
-  --money-out: #ff8f86;
-  --warn: #f2b84b;
-  --border: #26292d;
-  --input: #2c2f34;
-  --ring: #8e99ff;
-  --chart-1: #8e99ff;
-  --chart-2: #f2f3f4;
-  --chart-3: #8a93a8;
-  --chart-4: #5c6375;
-  --chart-5: #3a3e44;
-  --chart-in: #5fd491;
-  --chart-out: #f2f3f4;
-  --sidebar: #111215;
-  --sidebar-foreground: #f2f3f4;
-  --sidebar-primary: #f2f3f4;
-  --sidebar-primary-foreground: #0c0d0f;
-  --sidebar-accent: #1d2024;
-  --sidebar-accent-foreground: #f2f3f4;
-  --sidebar-border: #26292d;
-  --sidebar-ring: #8e99ff;
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 1ms;
+    --dur-fast: 1ms;
+    --dur-base: 1ms;
+    --dur-slow: 1ms;
+    --stagger: 0ms;
+  }
+  /* Catches hard-coded durations in Base UI, tw-animate-css and sonner. */
+  *,
+  ::before,
+  ::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  html,
+  body {
+    overflow-x: clip;
+  }
   body {
     @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
-    font-feature-settings: "zero", "ss01";
+    letter-spacing: -0.006em;
+    font-feature-settings: "ss01";
     -webkit-tap-highlight-color: transparent;
+    scrollbar-color: var(--input) transparent;
+    caret-color: var(--brand);
   }
+  ::selection {
+    background-color: color-mix(in oklab, var(--brand) 22%, transparent);
+  }
+}
+
+/* Hybrid type: figures and micro-labels in Geist Mono with slashed zero. */
+@layer base {
+  .tabular-nums,
+  .font-mono {
+    font-family: var(--font-mono-ui);
+    font-feature-settings: "zero";
+    letter-spacing: 0;
+  }
+}
+
+/* Section label (Hallmark): body face, a step smaller, sentence case, untracked, muted. */
+@utility label {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--muted-foreground);
+}
+
+/* Press feedback (spec § 2.2). `press` scales to .97; `press-strong` (icon buttons, the Add button)
+   presses to .92 and springs back with overshoot. Each works alone. They own `transition`, so don't add
+   transition-* classes beside them. box-shadow is left out on purpose: the focus ring appears instantly. */
+@layer utilities {
+  .press,
+  .press-strong {
+    transition:
+      scale var(--press-release, var(--dur-instant) var(--ease-out)),
+      background-color var(--dur-fast) var(--ease-out),
+      border-color var(--dur-fast) var(--ease-out),
+      color var(--dur-fast) var(--ease-out),
+      opacity var(--dur-fast) var(--ease-out);
+  }
+  .press-strong {
+    --press-scale: 0.92;
+    --press-release: var(--dur-slow) var(--ease-spring-pop);
+  }
+  :is(.press, .press-strong):active:not(:disabled, [aria-disabled="true"], [data-disabled]) {
+    scale: var(--press-scale);
+    transition-duration: 60ms;
+    transition-timing-function: var(--ease-out);
+  }
+}
+
+/* Loading block: a highlight sweeps across (transform only). Fades in after 150ms so fast loads never flash. */
+@utility skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--muted);
+  animation: skeleton-in var(--dur-base) var(--ease-out) 150ms both;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, var(--skeleton-shine), transparent);
+    translate: -100% 0;
+    animation: shimmer 1.4s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &::after {
+      animation: none;
+      display: none;
+    }
+  }
+}
+
+/* List rows (spec § 2.7). Wrap each row in .list-row; its single child is the row.
+   data-new: grows in from 0 height and flashes brand. data-removing: collapses out, then drop it from state. */
+@utility list-row {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows var(--dur-base) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out),
+    translate var(--dur-base) var(--ease-out);
+  & > * {
+    min-height: 0;
+  }
+  &[data-new],
+  &[data-removing] {
+    & > * {
+      overflow: hidden;
+    }
+  }
+  &[data-new] {
+    animation: flash 1200ms var(--ease-out);
+    @starting-style {
+      grid-template-rows: 0fr;
+      opacity: 0;
+      translate: 0 -6px;
+    }
+  }
+  &[data-removing] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    pointer-events: none;
+    transition-duration: calc(var(--dur-base) * 0.9);
+    transition-timing-function: var(--ease-in);
+  }
+}
+
+/* Segmented ToggleGroup (spacing 0): one thumb slides under the pressed item. Pure CSS, up to 5 items. */
+@utility segmented {
+  position: relative;
+  isolation: isolate;
+  --seg-n: 2;
+  --seg-i: 0;
+  &:has(> :nth-child(3)) { --seg-n: 3; }
+  &:has(> :nth-child(4)) { --seg-n: 4; }
+  &:has(> :nth-child(5)) { --seg-n: 5; }
+  &:has(> :nth-child(2)[data-pressed]) { --seg-i: 1; }
+  &:has(> :nth-child(3)[data-pressed]) { --seg-i: 2; }
+  &:has(> :nth-child(4)[data-pressed]) { --seg-i: 3; }
+  &:has(> :nth-child(5)[data-pressed]) { --seg-i: 4; }
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: calc(100% / var(--seg-n));
+    translate: calc(var(--seg-i) * 100%) 0;
+    border-radius: var(--radius-md);
+    background-color: light-dark(var(--card), var(--input));
+    box-shadow: var(--shadow-raised);
+    transition: translate var(--dur-base) var(--ease-ios);
+  }
+  &:not(:has(> [data-pressed]))::before {
+    opacity: 0;
+  }
+}
+
+@keyframes skeleton-in {
+  from { opacity: 0; }
+}
+@keyframes shimmer {
+  to { translate: 100% 0; }
+}
+
+/* Rolling digits for <Money animate> (spec § 2.1). A hidden copy of the digit sets width and baseline;
+   the 0-9 column slides to --d. @starting-style rolls up from 0 on first paint. */
+.roll {
+  position: relative;
+  display: inline-block;
+  overflow: clip; /* not hidden: clip keeps the text baseline, so digits line up with $ and , */
+}
+.roll > .roll-ghost {
+  color: transparent;
+}
+.roll > .roll-col {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  translate: 0 calc(var(--d) * -10%);
+  transition: translate var(--dur-slow) var(--ease-out);
+  @starting-style {
+    translate: 0 0;
+  }
+}
+
+/* Toasts (sonner). Higher specificity than sonner's injected styles. */
+[data-sonner-toaster] [data-sonner-toast].cn-toast[data-styled="true"] {
+  border-radius: var(--radius-lg);
+  border-color: transparent;
+  box-shadow: var(--shadow-overlay);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  padding: 12px 12px 12px 16px;
+  gap: 12px;
+}
+[data-sonner-toaster] [data-sonner-toast].cn-toast[data-styled="true"] [data-button] {
+  height: 32px;
+  padding-inline: 12px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--brand);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+[data-sonner-toaster] [data-sonner-toast].cn-toast[data-styled="true"] [data-button]:hover {
+  background: var(--muted);
+}
+[data-sonner-toaster] [data-sonner-toast].cn-toast[data-styled="true"] [data-button]:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
 }

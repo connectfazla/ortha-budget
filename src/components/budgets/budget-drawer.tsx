@@ -39,7 +39,7 @@ export function BudgetDrawer({ budget, categories = [], children }: { budget?: B
         <form onSubmit={submit} className="flex flex-col gap-4 p-4">
           {!budget && (
             <div className="grid gap-1.5">
-              <Label htmlFor="category" className="text-muted-foreground text-[11px] tracking-[0.08em] uppercase">Category</Label>
+              <Label htmlFor="category" className="label">Category</Label>
               <select
                 id="category"
                 name="category"
@@ -53,7 +53,7 @@ export function BudgetDrawer({ budget, categories = [], children }: { budget?: B
             </div>
           )}
           <div className="grid gap-1.5">
-            <Label htmlFor="limit" className="text-muted-foreground text-[11px] tracking-[0.08em] uppercase">
+            <Label htmlFor="limit" className="label">
               Limit / month
             </Label>
             <Input id="limit" name="limit" required inputMode="decimal" defaultValue={budget?.monthly_limit_usd} className="h-14 text-2xl tracking-tight" />

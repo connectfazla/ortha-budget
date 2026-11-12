@@ -5,16 +5,17 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
-  { href: "/subscriptions", label: "Subscriptions" },
-  { href: "/lifetime", label: "Lifetime deals" },
+  { href: "/subscriptions", label: "Recurring" },
+  { href: "/lifetime", label: "Lifetime" },
   { href: "/contractors", label: "Contractors" },
+  { href: "/clients", label: "Clients" },
 ];
 
 /** Segmented sub-nav for the mobile "Plans" tab. Hidden on desktop, where the sidebar lists each page. */
 export function PlansNav() {
   const pathname = usePathname();
   return (
-    <nav aria-label="Plans" className="bg-muted mb-4 grid grid-cols-3 gap-1 rounded-md border p-1 lg:hidden">
+    <nav aria-label="Plans" className="bg-muted mb-4 grid grid-cols-4 gap-1 rounded-md border p-1 lg:hidden">
       {ITEMS.map((i) => {
         const active = pathname.startsWith(i.href);
         return (
@@ -23,7 +24,7 @@ export function PlansNav() {
             href={i.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex h-9 items-center justify-center rounded-sm text-[11px] font-medium tracking-[0.08em] uppercase transition-colors",
+              "flex h-9 items-center justify-center rounded-sm text-xs font-medium transition-colors",
               active ? "bg-card text-foreground border" : "text-muted-foreground hover:text-foreground",
             )}
           >

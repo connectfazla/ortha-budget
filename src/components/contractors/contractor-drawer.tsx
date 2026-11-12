@@ -110,8 +110,8 @@ function ContractorForm({ contractor, onDone }: { contractor?: Contractor; onDon
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="grid gap-1.5">
-      <span className="text-muted-foreground text-[11px] tracking-[0.08em] uppercase">{label}</span>
+    <label className="grid gap-1.5 focus-within:[&_input]:ring-2">
+      <span className="label">{label}</span>
       {children}
     </label>
   );

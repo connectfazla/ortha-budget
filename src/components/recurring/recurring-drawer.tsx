@@ -11,11 +11,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { createRecurring, updateRecurring, type RecurringInput } from "@/lib/actions";
 import { CURRENCIES, INTERVALS, formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import type { BillingInterval, Contractor, Direction, Recurring, RecurringStatus } from "@/lib/types";
+import type { BillingInterval, Client, Contractor, Direction, Recurring, RecurringStatus } from "@/lib/types";
 
 const NATIVE =
   "border-input dark:bg-input/30 h-11 w-full rounded-md border bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
-const LABEL = "text-muted-foreground text-[11px] font-medium tracking-[0.08em] uppercase";
+const LABEL = "label";
 
 // USD-per-unit rates from open.er-api.com (same helper as add-entry-drawer), fetched once per page load.
 let ratesPromise: Promise<Record<string, number>> | null = null;
@@ -37,6 +37,7 @@ export function RecurringDrawer({
   onOpenChange,
   item,
   contractors,
+  clients,
   categories,
   today,
 }: {
@@ -44,6 +45,8 @@ export function RecurringDrawer({
   onOpenChange: (o: boolean) => void;
   item: Recurring | null;
   contractors: Contractor[];
+  /** Active clients for the optional Client row. Omit and the row is hidden. */
+  clients?: Client[];
   categories: string[];
   today: string;
 }) {
@@ -51,12 +54,12 @@ export function RecurringDrawer({
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
         <DrawerHeader className="pb-2">
-          <DrawerTitle className="text-[11px] font-medium tracking-[0.08em] uppercase">
+          <DrawerTitle className="text-sm font-medium">
             {item ? "Edit recurring" : "New recurring"}
           </DrawerTitle>
         </DrawerHeader>
         {/* Form mounts only while open, so state resets per open. */}
-        <Form item={item} contractors={contractors} categories={categories} today={today} close={() => onOpenChange(false)} />
+        <Form item={item} contractors={contractors} clients={clients} categories={categories} today={today} close={() => onOpenChange(false)} />
       </DrawerContent>
     </Drawer>
   );
@@ -65,12 +68,14 @@ export function RecurringDrawer({
 function Form({
   item,
   contractors,
+  clients,
   categories,
   today,
   close,
 }: {
   item: Recurring | null;
   contractors: Contractor[];
+  clients?: Client[];
   categories: string[];
   today: string;
   close: () => void;
@@ -98,10 +103,14 @@ function Form({
   const [category, setCategory] = useState(item?.category ?? "Software");
   const [status, setStatus] = useState<RecurringStatus>(item?.status ?? "active");
   const [contractor, setContractor] = useState(item?.contractor_id ?? "none");
+  const [clientId, setClientId] = useState(item?.client_id ?? "none");
+  const [trialEnds, setTrialEnds] = useState(item?.trial_ends ?? "");
   const [url, setUrl] = useState(item?.url ?? "");
   const [notes, setNotes] = useState(item?.notes ?? "");
 
   const items = [{ value: "none", label: "None" }, ...contractors.map((c) => ({ value: c.id, label: c.name }))];
+
+  const clientItems = [{ value: "none", label: "None" }, ...(clients ?? []).map((c) => ({ value: c.id, label: c.name }))];
 
   const isUsd = currency === "USD";
   const amountN = num(amount);
@@ -124,6 +133,8 @@ function Form({
       category,
       status,
       contractor_id: contractor === "none" ? null : contractor,
+      client_id: clientId === "none" ? null : clientId,
+      trial_ends: trialEnds || null,
       url: url || null,
       notes: notes || null,
     };
@@ -153,11 +164,11 @@ function Form({
               aria-pressed={direction === d}
               onClick={() => setDirection(d)}
               className={cn(
-                "h-9 rounded-sm text-[11px] font-medium tracking-[0.08em] uppercase",
+                "focus-visible:ring-ring/50 h-9 rounded-sm text-xs font-medium outline-none focus-visible:ring-3",
                 direction === d ? "bg-muted text-foreground border" : "text-muted-foreground",
               )}
             >
-              {d === "out" ? "Out · tool / pay" : "In · retainer"}
+              {d === "out" ? "Money out" : "Money in (retainer)"}
             </button>
           ))}
         </div>
@@ -182,7 +193,7 @@ function Form({
           </Field>
         </div>
         {currency !== "USD" && (
-          <Field label={`FX · 1 ${currency} = ? USD`}>
+          <Field label={`USD per 1 ${currency}`}>
             <Input className="h-11" inputMode="decimal" value={fx} onChange={(e) => setFx(e.target.value.replace(/[^\d.,]/g, ""))} required />
           </Field>
         )}
@@ -236,6 +247,25 @@ function Form({
               ))}
             </SelectContent>
           </Select>
+        </Field>
+        {clients ? (
+          <Field label="Client (optional)">
+            <Select value={clientId} onValueChange={(v) => setClientId(v ?? "none")} items={clientItems}>
+              <SelectTrigger className="h-11 w-full" aria-label="Client">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {clientItems.map((i) => (
+                  <SelectItem key={i.value} value={i.value}>
+                    {i.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        ) : null}
+        <Field label="Trial ends (optional)">
+          <Input className="h-11" type="date" value={trialEnds} onChange={(e) => setTrialEnds(e.target.value)} />
         </Field>
         <Field label="URL">
           <Input className="h-11" type="url" inputMode="url" placeholder="https://" value={url} onChange={(e) => setUrl(e.target.value)} />

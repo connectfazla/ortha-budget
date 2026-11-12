@@ -13,7 +13,7 @@ export function monthLabel(month: string, style: "short" | "long" = "long") {
 }
 
 const btn =
-  "text-muted-foreground hover:text-foreground hover:bg-muted grid size-9 place-items-center rounded-md border transition-colors";
+  "text-muted-foreground hover:text-foreground hover:bg-muted grid size-10 place-items-center rounded-md border press transition-colors";
 
 export function MonthSwitcher({ month }: { month: string }) {
   const now = monthKey();
@@ -23,7 +23,7 @@ export function MonthSwitcher({ month }: { month: string }) {
       <Link href={href(shiftMonth(month, -1))} aria-label="Previous month" className={btn}>
         <ChevronLeft className="size-4" />
       </Link>
-      <span className="min-w-28 text-center text-[13px] font-medium tracking-[0.08em] uppercase">{monthLabel(month)}</span>
+      <span className="min-w-28 text-center text-sm font-medium">{monthLabel(month)}</span>
       {month < now ? (
         <Link href={href(shiftMonth(month, 1))} aria-label="Next month" className={btn}>
           <ChevronRight className="size-4" />

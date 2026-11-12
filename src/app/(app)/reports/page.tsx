@@ -2,20 +2,21 @@ import Link from "next/link";
 import { CashflowChart, DonutChart } from "@/components/reports/charts";
 import { ReportsNav } from "@/components/reports/section-nav";
 import { PageHeader } from "@/components/shell/page-header";
-import { getMonthlySeries, getTransactions, requireUser } from "@/lib/data";
+import { getClientProfit, getMonthlySeries, getTransactions, requireUser } from "@/lib/data";
 import { formatMoney, monthRange, round2 } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 const RANGES = { "3m": 3, "6m": 6, "12m": 12 } as const;
-const LABEL = "text-muted-foreground text-[11px] font-medium tracking-[0.08em] uppercase";
+const LABEL = "label";
 const RAMP = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
-const mon = (k: string) => new Date(`${k}-01T00:00:00`).toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+const mon = (k: string) => new Date(`${k}-01T00:00:00`).toLocaleDateString("en-US", { month: "short" });
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
   await requireUser();
   const { range: r } = await searchParams;
   const range = r && Object.hasOwn(RANGES, r) ? (r as keyof typeof RANGES) : "6m";
   const series = await getMonthlySeries(RANGES[range]);
+  const clientRows = await getClientProfit(monthRange(series[0].month).from, monthRange(series[series.length - 1].month).to);
   const out = await getTransactions({
     direction: "out",
     from: monthRange(series[0].month).from,
@@ -32,14 +33,14 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const ranked = [...cats].sort((a, b) => b[1] - a[1]);
   const rows = ranked.slice(0, 5).map(([name, value], i) => ({ name, value, fill: RAMP[i] }));
   const other = ranked.slice(5).reduce((s, [, v]) => s + v, 0);
-  if (other > 0) rows.push({ name: "OTHER", value: other, fill: "var(--border)" });
+  if (other > 0) rows.push({ name: "Other", value: other, fill: "var(--border)" });
   const catTotal = rows.reduce((s, x) => s + x.value, 0);
 
   const totals = [
-    ["TOTAL IN", formatMoney(totalIn), "text-money-in"],
-    ["TOTAL OUT", formatMoney(totalOut), ""],
-    ["NET", formatMoney(net), net < 0 ? "text-money-out" : ""],
-    ["AVG / MONTH", formatMoney(round2(net / series.length)), net < 0 ? "text-money-out" : ""],
+    ["Total in", formatMoney(totalIn), "text-money-in"],
+    ["Total out", formatMoney(totalOut), ""],
+    ["Net", formatMoney(net), net < 0 ? "text-money-out" : ""],
+    ["Average per month", formatMoney(round2(net / series.length)), net < 0 ? "text-money-out" : ""],
   ];
 
   return (
@@ -55,7 +56,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 href={`/reports?range=${k}`}
                 aria-current={k === range ? "page" : undefined}
                 className={cn(
-                  "flex h-8 min-w-11 items-center justify-center rounded-sm text-[11px] tracking-[0.08em] uppercase",
+                  "flex h-8 min-w-11 items-center justify-center rounded-sm text-xs",
                   k === range ? "bg-card text-foreground border" : "text-muted-foreground",
                 )}
               >
@@ -67,11 +68,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="bg-card rounded-lg border p-4">
-          <h2 className={`${LABEL} pb-3`}>CASH FLOW / IN VS OUT</h2>
+          <h2 className={`${LABEL} pb-3`}>Cash flow, in and out</h2>
           <CashflowChart data={series.map((s) => ({ ...s, label: mon(s.month) }))} />
-          <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-md border bg-border">
+          <dl className="mt-4 grid grid-cols-2 gap-y-3 divide-x border-t pt-3">
             {totals.map(([k, v, c]) => (
-              <div key={k} className="bg-card p-3">
+              <div key={k} className="px-3">
                 <dt className={LABEL}>{k}</dt>
                 <dd className={cn("mt-1 text-lg font-semibold tracking-tight tabular-nums", c)}>{v}</dd>
               </div>
@@ -80,7 +81,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         </section>
 
         <section className="bg-card rounded-lg border p-4">
-          <h2 className={`${LABEL} pb-3`}>WHERE IT GOES / {range.toUpperCase()}</h2>
+          <h2 className={`${LABEL} pb-3`}>Where it goes, last {range}</h2>
           {rows.length === 0 ? (
             <p className="text-muted-foreground rounded-md border border-dashed p-6 text-center text-sm">No spending in this range.</p>
           ) : (
@@ -101,14 +102,55 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         </section>
       </div>
 
+      <section className="bg-card mt-4 rounded-lg border p-4">
+        <h2 className={`${LABEL} pb-3`}>By client</h2>
+        {clientRows.length === 0 ? (
+          <p className="text-muted-foreground rounded-md border border-dashed p-6 text-center text-sm">
+            Tag transactions with a client to see margin per client.{" "}
+            <Link href="/clients" className="text-foreground underline underline-offset-2">
+              Go to clients
+            </Link>
+          </p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className={`${LABEL} border-b text-right`}>
+                <th className="py-2 text-left font-medium">Client</th>
+                <th className="py-2 font-medium">In</th>
+                <th className="py-2 font-medium">Out</th>
+                <th className="py-2 font-medium">Margin</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {clientRows.map((c) => (
+                <tr key={c.client.id} className="text-right tabular-nums">
+                  <td className="max-w-0 py-2.5 text-left">
+                    <Link href={`/clients/${c.client.id}`} className="flex items-center gap-2 hover:underline">
+                      <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ background: c.client.color ?? "var(--muted-foreground)" }} />
+                      <span className="truncate">{c.client.name}</span>
+                    </Link>
+                  </td>
+                  <td className="py-2.5">{formatMoney(c.inUsd, "USD", { compact: true })}</td>
+                  <td className="py-2.5">{formatMoney(c.outUsd, "USD", { compact: true })}</td>
+                  <td className={cn("py-2.5 font-medium", c.marginUsd < 0 ? "text-money-out" : "text-money-in")}>
+                    {c.marginUsd < 0 ? "−" : ""}
+                    {formatMoney(Math.abs(c.marginUsd), "USD", { compact: true })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
       <section className="bg-card mt-4 rounded-lg border">
         <table className="w-full text-sm">
           <thead>
-            <tr className={`${LABEL} border-b text-right text-[10px]`}>
-              <th className="p-3 text-left font-medium">MONTH</th>
-              <th className="p-3 font-medium">IN</th>
-              <th className="p-3 font-medium">OUT</th>
-              <th className="p-3 font-medium">NET</th>
+            <tr className={`${LABEL} border-b text-right`}>
+              <th className="p-3 text-left font-medium">Month</th>
+              <th className="p-3 font-medium">In</th>
+              <th className="p-3 font-medium">Out</th>
+              <th className="p-3 font-medium">Net</th>
             </tr>
           </thead>
           <tbody className="divide-y">

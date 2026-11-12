@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { BarChart3, Home, ListOrdered, Plus, Repeat } from "lucide-react";
 import { AddEntryDrawer } from "@/components/entry/add-entry-drawer";
 import { cn } from "@/lib/utils";
-import type { Contractor } from "@/lib/types";
+import type { Client, Contractor } from "@/lib/types";
 
 const starts = (p: string, ...prefixes: string[]) => prefixes.some((x) => p === x || p.startsWith(x + "/"));
 
@@ -13,12 +13,12 @@ const TABS = [
   { href: "/", label: "Home", icon: Home, match: (p: string) => p === "/" },
   { href: "/transactions", label: "Activity", icon: ListOrdered, match: (p: string) => starts(p, "/transactions") },
   null, // Add slot
-  { href: "/subscriptions", label: "Plans", icon: Repeat, match: (p: string) => starts(p, "/subscriptions", "/lifetime", "/contractors") },
+  { href: "/subscriptions", label: "Plans", icon: Repeat, match: (p: string) => starts(p, "/subscriptions", "/lifetime", "/contractors", "/clients") },
   { href: "/reports", label: "Reports", icon: BarChart3, match: (p: string) => starts(p, "/reports", "/budgets") },
 ];
 
 /** Mobile tab bar [YNAB-BUDGET]: 5 slots, raised square Add in the centre. Hidden on lg+. */
-export function BottomBar({ contractors, categories }: { contractors: Contractor[]; categories: string[] }) {
+export function BottomBar({ contractors, categories, clients }: { contractors: Contractor[]; categories: string[]; clients: Client[] }) {
   const pathname = usePathname();
   return (
     <nav
@@ -32,7 +32,7 @@ export function BottomBar({ contractors, categories }: { contractors: Contractor
             href={t.href}
             aria-current={t.match(pathname) ? "page" : undefined}
             className={cn(
-              "relative flex h-16 flex-col items-center justify-center gap-1 text-[10px] font-medium tracking-[0.08em] uppercase",
+              "relative flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium",
               t.match(pathname) ? "text-foreground" : "text-muted-foreground",
             )}
           >
@@ -42,7 +42,7 @@ export function BottomBar({ contractors, categories }: { contractors: Contractor
           </Link>
         ) : (
           <div key="add" className="relative flex justify-center">
-            <AddEntryDrawer contractors={contractors} categories={categories}>
+            <AddEntryDrawer contractors={contractors} categories={categories} clients={clients}>
               <button
                 type="button"
                 aria-label="Add transaction"

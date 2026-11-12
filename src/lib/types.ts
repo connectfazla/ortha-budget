@@ -33,6 +33,8 @@ export type Recurring = {
   category: string;
   status: RecurringStatus;
   contractor_id: string | null;
+  client_id: string | null;
+  trial_ends: string | null; // YYYY-MM-DD, free trial end
   url: string | null;
   notes: string | null;
   created_at: string;
@@ -51,10 +53,26 @@ export type Transaction = {
   category: string;
   vendor: string | null;
   contractor_id: string | null;
+  client_id: string | null;
   recurring_id: string | null;
   replaces_monthly_usd: number | null;
   notes: string | null;
   created_at: string;
+};
+
+export type Client = {
+  id: string;
+  name: string;
+  color: string | null;
+  archived: boolean;
+  created_at: string;
+};
+
+export type UserSettings = {
+  tax_rate: number; // % of income to set aside
+  cash_on_hand_usd: number | null;
+  cash_updated_at: string | null;
+  calendar_token: string | null;
 };
 
 export type Budget = {

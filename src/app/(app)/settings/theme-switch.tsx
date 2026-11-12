@@ -21,7 +21,7 @@ export function ThemeSwitch() {
           aria-checked={current === o}
           onClick={() => setTheme(o)}
           className={cn(
-            "h-9 rounded-sm text-[11px] font-medium tracking-[0.08em] uppercase transition-colors",
+            "press h-10 rounded-sm text-sm font-medium capitalize transition-colors",
             current === o ? "bg-card text-foreground border" : "text-muted-foreground hover:text-foreground",
           )}
         >

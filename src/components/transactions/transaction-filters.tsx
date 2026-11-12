@@ -7,25 +7,32 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { SearchIcon, SlidersHorizontalIcon, XIcon } from "lucide-react";
 import { KINDS, monthKey } from "@/lib/money";
-import type { Direction, TxnKind } from "@/lib/types";
+import type { Client, Direction, TxnKind } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 /** Already validated by the page; never raw searchParams. */
-export type Filters = { q?: string; month?: string; kind?: TxnKind; direction?: Direction };
+export type Filters = { q?: string; month?: string; kind?: TxnKind; direction?: Direction; clientId?: string; from?: string; to?: string };
+
+const URL_KEYS = ["month", "kind", "direction", "clientId", "from", "to"] as const;
 
 export function monthLabel(month: string) {
   const [y, m] = month.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
 
-const LABEL = "text-muted-foreground text-[11px] font-medium tracking-[0.08em] uppercase";
-const CHIP =
-  "h-9 rounded-sm border px-3 text-[11px] tracking-[0.08em] uppercase data-pressed:border-foreground data-pressed:bg-foreground data-pressed:text-background";
+function shortDate(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
-export function TransactionFilters({ filters }: { filters: Filters }) {
+const LABEL = "text-muted-foreground text-xs font-medium";
+const CHIP =
+  "h-11 rounded-sm border px-3 text-sm data-pressed:border-foreground data-pressed:bg-foreground data-pressed:text-background";
+
+export function TransactionFilters({ filters, clients = [] }: { filters: Filters; clients?: Client[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const [q, setQ] = useState(filters.q ?? "");
@@ -53,8 +60,9 @@ export function TransactionFilters({ filters }: { filters: Filters }) {
     timer.current = setTimeout(() => {
       // Read the live URL at fire time so filters changed meanwhile are kept.
       const cur = new URLSearchParams(window.location.search);
-      const next = (k: string) => cur.get(k) || undefined;
-      go({ month: next("month"), kind: next("kind") as TxnKind | undefined, direction: next("direction") as Direction | undefined, q: v.trim() || undefined });
+      const next: Filters = { q: v.trim() || undefined };
+      for (const k of URL_KEYS) (next as Record<string, string | undefined>)[k] = cur.get(k) || undefined;
+      go(next);
     }, 300);
   }
 
@@ -62,6 +70,9 @@ export function TransactionFilters({ filters }: { filters: Filters }) {
   if (filters.month) chips.push({ key: "month", label: monthLabel(filters.month) });
   if (filters.kind) chips.push({ key: "kind", label: KINDS[filters.kind].label });
   if (filters.direction) chips.push({ key: "direction", label: filters.direction === "in" ? "In" : "Out" });
+  if (filters.clientId) chips.push({ key: "clientId", label: clients.find((c) => c.id === filters.clientId)?.name ?? "Client" });
+  if (filters.from) chips.push({ key: "from", label: `From ${shortDate(filters.from)}` });
+  if (filters.to) chips.push({ key: "to", label: `To ${shortDate(filters.to)}` });
 
   return (
     <div className="mb-3 flex flex-col gap-2">
@@ -78,7 +89,7 @@ export function TransactionFilters({ filters }: { filters: Filters }) {
             className="bg-muted h-11 rounded-md border-transparent pl-9"
           />
         </div>
-        <FilterDrawer filters={filters} apply={go}>
+        <FilterDrawer filters={filters} apply={go} clients={clients}>
           <Button variant="outline" aria-label="Filters" className="relative size-11 rounded-md">
             <SlidersHorizontalIcon />
             {chips.length ? (
@@ -98,7 +109,7 @@ export function TransactionFilters({ filters }: { filters: Filters }) {
               type="button"
               onClick={() => go({ ...filters, [c.key]: undefined })}
               aria-label={`Remove filter ${c.label}`}
-              className="bg-foreground text-background flex h-9 shrink-0 items-center gap-1.5 rounded-sm px-3 text-[11px] tracking-[0.08em] uppercase"
+              className="bg-foreground text-background flex h-11 shrink-0 items-center gap-1.5 rounded-sm px-3 text-sm"
             >
               {c.label}
               <XIcon className="size-3.5" />
@@ -113,10 +124,12 @@ export function TransactionFilters({ filters }: { filters: Filters }) {
 function FilterDrawer({
   filters,
   apply,
+  clients,
   children,
 }: {
   filters: Filters;
   apply: (f: Filters) => void;
+  clients: Client[];
   children: React.ReactElement;
 }) {
   const [open, setOpen] = useState(false);
@@ -127,6 +140,7 @@ function FilterDrawer({
         {/* Popup unmounts on close, so the draft resets to the URL state on every open. */}
         <FilterForm
           filters={filters}
+          clients={clients}
           onApply={(f) => {
             apply(f);
             setOpen(false);
@@ -137,13 +151,14 @@ function FilterDrawer({
   );
 }
 
-function FilterForm({ filters, onApply }: { filters: Filters; onApply: (f: Filters) => void }) {
+function FilterForm({ filters, clients, onApply }: { filters: Filters; clients: Client[]; onApply: (f: Filters) => void }) {
   const [draft, setDraft] = useState(filters);
   const now = new Date();
   const months = Array.from({ length: 12 }, (_, i) => monthKey(new Date(now.getFullYear(), now.getMonth() - i, 1)));
   if (filters.month && !months.includes(filters.month)) months.push(filters.month);
   const set = (patch: Filters) => setDraft((d) => ({ ...d, ...patch }));
-  const active = [draft.month, draft.kind, draft.direction].filter(Boolean).length;
+  const active = [draft.month, draft.kind, draft.direction, draft.clientId, draft.from, draft.to].filter(Boolean).length;
+  const badRange = Boolean(draft.from && draft.to && draft.from > draft.to);
 
   return (
     <>
@@ -162,6 +177,27 @@ function FilterForm({ filters, onApply }: { filters: Filters; onApply: (f: Filte
             options={[{ value: "", label: "All" }, ...months.map((m) => ({ value: m, label: monthLabel(m) }))]}
           />
         </Section>
+        <Section label="Date range">
+          <div className="grid grid-cols-2 gap-3">
+            {(["from", "to"] as const).map((k) => (
+              <label key={k} className="text-sm">
+                <span className={`${LABEL} mb-1 block`}>{k === "from" ? "From" : "To"}</span>
+                <Input type="date" value={draft[k] ?? ""} onChange={(e) => set({ [k]: e.target.value || undefined })} className="h-11 w-full" />
+              </label>
+            ))}
+          </div>
+          {badRange ? <p role="alert" className="text-destructive mt-2 text-sm">The start date is after the end date.</p> : null}
+        </Section>
+        {clients.length ? (
+          <Section label="Client">
+            <Pills
+              label="Client"
+              value={draft.clientId ?? ""}
+              onChange={(v) => set({ clientId: v || undefined })}
+              options={[{ value: "", label: "All" }, ...clients.map((c) => ({ value: c.id, label: c.name }))]}
+            />
+          </Section>
+        ) : null}
         <Section label="Type">
           <Pills
             label="Type"
@@ -187,10 +223,10 @@ function FilterForm({ filters, onApply }: { filters: Filters; onApply: (f: Filte
         </Section>
       </div>
       <div className="flex shrink-0 gap-2 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <Button variant="outline" className="h-12 flex-1 rounded-md text-[11px] tracking-[0.08em] uppercase" onClick={() => onApply({ q: filters.q })}>
+        <Button variant="outline" className="h-12 flex-1 rounded-md text-sm" onClick={() => onApply({ q: filters.q })}>
           Clear{active ? ` (${active})` : ""}
         </Button>
-        <Button className="h-12 flex-[2] rounded-md text-[11px] tracking-[0.08em] uppercase" onClick={() => onApply(draft)}>
+        <Button className="h-12 flex-[2] rounded-md text-sm" disabled={badRange} onClick={() => onApply(draft)}>
           Show results
         </Button>
       </div>

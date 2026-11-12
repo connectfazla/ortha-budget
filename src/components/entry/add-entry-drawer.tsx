@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Trash2Icon, XIcon } from "lucide-react";
 import { createTransaction, deleteTransaction, updateTransaction, type TransactionInput } from "@/lib/actions";
 import { CURRENCIES, KINDS, formatMoney, round2 } from "@/lib/money";
-import type { Contractor, Direction, Transaction, TxnKind } from "@/lib/types";
+import type { Client, Contractor, Direction, Transaction, TxnKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,10 @@ export type AddEntryDrawerProps = {
   defaultKind?: TxnKind;
   /** Pre-pick this contractor (new contractor payouts from a contractor's page). */
   defaultContractorId?: string;
+  /** Active clients for the optional Client row. Omit and the row is hidden. */
+  clients?: Client[];
+  /** Pre-pick this client (new entries from a client page). */
+  defaultClientId?: string;
   transaction?: Transaction;
 };
 
@@ -76,6 +80,8 @@ function EntryForm({
   categories,
   defaultKind = "expense",
   defaultContractorId,
+  clients,
+  defaultClientId,
   transaction: t,
   onDone,
 }: Omit<AddEntryDrawerProps, "children"> & { onDone: () => void }) {
@@ -87,13 +93,14 @@ function EntryForm({
   const [amount, setAmount] = useState(t ? String(t.amount) : "");
   const [currency, setCurrency] = useState(t?.currency ?? preset?.currency ?? "USD");
   const [fx, setFx] = useState(t && t.currency !== "USD" ? String(t.fx_rate) : "");
-  const [description, setDescription] = useState(t?.description ?? (preset ? `Payout · ${preset.name}` : ""));
+  const [description, setDescription] = useState(t?.description ?? (preset ? `Payout, ${preset.name}` : ""));
   const [category, setCategory] = useState(t?.category ?? (preset ? "Contractors" : ""));
   const [vendor, setVendor] = useState(t?.vendor ?? "");
   const [date, setDate] = useState(t?.date ?? today);
   const [notes, setNotes] = useState(t?.notes ?? "");
   const [replaces, setReplaces] = useState(t?.replaces_monthly_usd != null ? String(t.replaces_monthly_usd) : "");
   const [contractorId, setContractorId] = useState<string | null>(t?.contractor_id ?? preset?.id ?? null);
+  const [clientId, setClientId] = useState<string>(t?.client_id ?? defaultClientId ?? "none");
   const [showErrors, setShowErrors] = useState(false);
   const latestCurrency = useRef(currency);
 
@@ -131,7 +138,7 @@ function EntryForm({
     setContractorId(cid);
     const c = contractors.find((x) => x.id === cid);
     if (!c) return;
-    setDescription(`Payout · ${c.name}`);
+    setDescription(`Payout, ${c.name}`);
     if (!category) setCategory("Contractors");
     if (c.currency !== currency) pickCurrency(c.currency);
   }
@@ -153,6 +160,7 @@ function EntryForm({
       category: category.trim(),
       vendor: vendor.trim() || null,
       contractor_id: kind === "contractor" ? contractorId : null,
+      client_id: clientId === "none" ? null : clientId,
       replaces_monthly_usd: kind === "lifetime" && replaces.trim() ? num(replaces) : null,
       notes: notes.trim() || null,
     };
@@ -174,6 +182,7 @@ function EntryForm({
     });
   }
 
+  const clientItems = [{ value: "none", label: "None" }, ...(clients ?? []).map((c) => ({ value: c.id, label: c.name }))];
   const contractorItems = Object.fromEntries(contractors.map((c) => [c.id, c.name]));
 
   return (
@@ -185,7 +194,7 @@ function EntryForm({
       }}
     >
       <DrawerHeader className="flex-row items-center justify-between pt-2 pb-2 text-left">
-        <DrawerTitle className="text-[11px] tracking-[0.08em] text-muted-foreground uppercase">
+        <DrawerTitle className="text-sm font-medium">
           {t ? "Edit entry" : "Add entry"}
         </DrawerTitle>
         <DrawerClose render={<Button type="button" variant="ghost" size="icon-lg" aria-label="Close" />}>
@@ -271,7 +280,7 @@ function EntryForm({
         {/* Non-USD: rate + secondary value line [BINANCE-AMT][BREX-ADD] */}
         {!isUsd ? (
           <Group className="mt-4">
-            <Row label="FX → USD" htmlFor={`${id}-fx`}>
+            <Row label="FX to USD" htmlFor={`${id}-fx`}>
               <Input
                 id={`${id}-fx`}
                 inputMode="decimal"
@@ -313,6 +322,22 @@ function EntryForm({
                   {contractors.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Row>
+          ) : null}
+          {clients ? (
+            <Row label="Client">
+              <Select value={clientId} onValueChange={(v) => setClientId(v ?? "none")} items={clientItems}>
+                <SelectTrigger aria-label="Client" className={cn(FIELD, "w-full justify-end gap-2 border-0")}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientItems.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -382,7 +407,7 @@ function EntryForm({
 
         {kind === "subscription" ? (
           <p className="mt-3 text-xs text-muted-foreground">
-            This logs a single charge. Recurring plans with renewal dates live under Plans → Subscriptions.
+            This logs a single charge. Recurring plans with renewal dates live under Plans, then Subscriptions.
           </p>
         ) : null}
 
@@ -397,7 +422,7 @@ function EntryForm({
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete this entry?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {t.description} · {formatMoney(t.amount, t.currency)}. This can’t be undone.
+                  {t.description}, {formatMoney(t.amount, t.currency)}. This can’t be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -413,7 +438,7 @@ function EntryForm({
 
       {/* Sticky CTA [GOPAY-ADD][CASH-AMT] */}
       <div className="shrink-0 border-t bg-popover p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <Button type="submit" disabled={pending} className="h-[52px] w-full rounded-md text-sm tracking-[0.08em] uppercase">
+        <Button type="submit" disabled={pending} className="h-[52px] w-full rounded-md text-sm">
           {pending ? "Saving…" : t ? "Save changes" : "Save"}
         </Button>
       </div>
@@ -422,9 +447,9 @@ function EntryForm({
 }
 
 const CHIP =
-  "h-9 rounded-sm border px-3 text-[11px] tracking-[0.08em] uppercase data-pressed:border-foreground data-pressed:bg-foreground data-pressed:text-background";
+  "h-9 rounded-sm border px-3 text-xs data-pressed:border-foreground data-pressed:bg-foreground data-pressed:text-background";
 const SEGMENT =
-  "h-10 text-[11px] tracking-[0.08em] uppercase data-pressed:bg-foreground data-pressed:text-background first:rounded-l-md last:rounded-r-md";
+  "h-10 text-xs text-muted-foreground data-pressed:text-foreground";
 const FIELD =
   "h-12 rounded-none border-0 bg-transparent px-0 text-right shadow-none focus-visible:ring-0 dark:bg-transparent aria-invalid:text-money-out aria-invalid:ring-0";
 
@@ -435,7 +460,7 @@ function Group({ className, children }: { className?: string; children: ReactNod
 function Row({ label, htmlFor, children }: { label: string; htmlFor?: string; children: ReactNode }) {
   return (
     <div className="flex min-h-12 items-center gap-3 px-3 focus-within:bg-muted/40">
-      <label htmlFor={htmlFor} className="w-28 shrink-0 text-[11px] tracking-[0.08em] text-muted-foreground uppercase">
+      <label htmlFor={htmlFor} className="label w-28 shrink-0">
         {label}
       </label>
       <div className="min-w-0 flex-1">{children}</div>

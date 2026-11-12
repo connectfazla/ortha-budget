@@ -11,6 +11,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      // Spec § 2.5: bottom-right on desktop; on phones a full-width toast above the tab bar.
+      position="bottom-right"
+      mobileOffset={{ bottom: "calc(env(safe-area-inset-bottom) + 80px)", left: 16, right: 16 }}
       icons={{
         success: (
           <CircleCheckIcon className="size-4" />
@@ -33,7 +36,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-bg": "var(--popover)",
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
+          "--border-radius": "var(--radius-lg)",
         } as React.CSSProperties
       }
       toastOptions={{

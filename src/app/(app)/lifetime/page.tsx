@@ -5,17 +5,17 @@ import { PageHeader } from "@/components/shell/page-header";
 import { PlansNav } from "@/components/shell/plans-nav";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { getCategories, getContractors, getLifetimeDeals, requireUser } from "@/lib/data";
+import { getCategories, getClients, getContractors, getLifetimeDeals, requireUser } from "@/lib/data";
 import { formatMoney, ltdPaybackMonths } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
-const LABEL = "text-muted-foreground text-[11px] font-medium tracking-[0.08em] uppercase";
 const nowMs = () => Date.now();
 const MONTH_MS = 30.4375 * 86_400_000;
 
 export default async function LifetimePage() {
   await requireUser();
-  const [deals, contractors, categories] = await Promise.all([getLifetimeDeals(), getContractors(), getCategories()]);
+  const [deals, contractors, categories, allClients] = await Promise.all([getLifetimeDeals(), getContractors(), getCategories(), getClients()]);
+  const clients = allClients.filter((c) => !c.archived);
   const now = nowMs();
 
   const rows = deals
@@ -33,7 +33,7 @@ export default async function LifetimePage() {
   const replaces = deals.reduce((s, d) => s + (d.replaces_monthly_usd ?? 0), 0);
   const paidOffCount = rows.filter((r) => r.paidOff).length;
   const add = (
-    <AddEntryDrawer contractors={contractors} categories={categories} defaultKind="lifetime">
+    <AddEntryDrawer contractors={contractors} clients={clients} categories={categories} defaultKind="lifetime">
       <Button size="icon-lg" aria-label="Add lifetime deal">
         <Plus />
       </Button>
@@ -45,11 +45,11 @@ export default async function LifetimePage() {
       <PlansNav />
       <PageHeader title="Lifetime deals" actions={add} />
 
-      <div className="grid grid-cols-2 divide-x divide-y rounded-lg border">
-        <Stat label="Paid total"><Money value={paid} direction="out" hideCents /></Stat>
-        <Stat label="Replaces / mo"><Money value={replaces} hideCents /></Stat>
-        <Stat label="Saved / yr"><Money value={replaces * 12} direction="in" hideCents /></Stat>
-        <Stat label="Paid off"><span className="tabular-nums">{paidOffCount} / {deals.length}</span></Stat>
+      <div className="shadow-card grid grid-cols-2 divide-x divide-y rounded-lg border">
+        <Stat label="Paid in total"><Money animate value={paid} direction="out" hideCents /></Stat>
+        <Stat label="Replaces per month"><Money animate value={replaces} hideCents /></Stat>
+        <Stat label="Saved per year"><Money animate value={replaces * 12} direction="in" hideCents /></Stat>
+        <Stat label="Paid off"><span className="tabular-nums">{paidOffCount} of {deals.length}</span></Stat>
       </div>
 
       {rows.length === 0 ? (
@@ -64,8 +64,8 @@ export default async function LifetimePage() {
         <ul className="mt-4 space-y-2">
           {rows.map(({ d, rep, progress, paidOff, left }) => (
             <li key={d.id}>
-              <AddEntryDrawer contractors={contractors} categories={categories} transaction={d}>
-                <button type="button" className="bg-card hover:bg-muted/50 block w-full rounded-lg border p-3 text-left">
+              <AddEntryDrawer contractors={contractors} clients={clients} categories={categories} transaction={d}>
+                <button type="button" className="bg-card hover:bg-muted/50 press focus-visible:ring-ring/50 focus-visible:ring-2 outline-none block w-full rounded-lg border p-3 text-left">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium">{d.description}</div>
@@ -73,17 +73,17 @@ export default async function LifetimePage() {
                     </div>
                     <span
                       className={cn(
-                        "shrink-0 rounded-sm border px-1.5 py-px text-[10px] leading-4 tracking-[0.08em] uppercase",
+                        "shrink-0 rounded-sm border px-1.5 py-px text-xs leading-4",
                         paidOff ? "text-money-in border-current" : "text-muted-foreground",
                       )}
                     >
-                      {paidOff ? "Paid off" : rep > 0 ? `Pays off in ${left} mo` : "No baseline"}
+                      {paidOff ? "Paid off" : rep > 0 ? `Pays off in ${left} ${left === 1 ? "month" : "months"}` : "No baseline"}
                     </span>
                   </div>
                   <Progress value={Math.round(progress * 100)} className="mt-3" aria-label="Payback progress" />
-                  <div className={cn(LABEL, "mt-2")}>
-                    Paid {formatMoney(d.amount_usd, "USD").replace(/\.00$/, "")}
-                    {rep > 0 && ` · Replaces ${formatMoney(rep, "USD").replace(/\.00$/, "")}/mo`}
+                  <div className="text-muted-foreground mt-2 flex flex-wrap gap-x-4 text-xs">
+                    <span>Paid {formatMoney(d.amount_usd, "USD").replace(/\.00$/, "")}</span>
+                    {rep > 0 && <span>Replaces {formatMoney(rep, "USD").replace(/\.00$/, "")} a month</span>}
                   </div>
                 </button>
               </AddEntryDrawer>
@@ -98,7 +98,7 @@ export default async function LifetimePage() {
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="p-3">
-      <div className={LABEL}>{label}</div>
+      <div className="label">{label}</div>
       <div className="mt-1 text-lg font-semibold tracking-tight">{children}</div>
     </div>
   );

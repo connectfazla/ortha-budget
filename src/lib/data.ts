@@ -3,7 +3,7 @@ import { cache } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_CATEGORIES, KINDS, addMonths, monthKey, monthRange, monthlyEquivalent, round2 } from "@/lib/money";
-import type { Budget, Contractor, Direction, MonthSummary, Recurring, Transaction, TxnKind } from "@/lib/types";
+import type { Budget, Client, Contractor, UserSettings, Direction, MonthSummary, Recurring, Transaction, TxnKind } from "@/lib/types";
 
 /** Signed-in Clerk user id, or redirect to sign-in. Call at the top of every (app) page (the proxy also guards). */
 export const requireUser = cache(async () => {
@@ -24,6 +24,7 @@ export type TxnFilters = {
   direction?: Direction;
   q?: string;
   contractorId?: string;
+  clientId?: string;
   limit?: number;
 };
 
@@ -48,6 +49,7 @@ export async function getTransactions(f: TxnFilters = {}): Promise<Transaction[]
     if (f.kind) query = query.eq("kind", f.kind);
     if (f.direction) query = query.eq("direction", f.direction);
     if (f.contractorId) query = query.eq("contractor_id", f.contractorId);
+    if (f.clientId) query = query.eq("client_id", f.clientId);
     if (f.q) {
       // Strip PostgREST filter syntax characters so user text can't change the filter.
       const q = f.q.replace(/[,()*%\\]/g, " ").trim().slice(0, 80);
@@ -185,4 +187,40 @@ export async function getMonthlySeries(months = 6) {
     else row.outUsd += t.amount_usd;
   }
   return [...rows.values()].map((r) => ({ ...r, inUsd: round2(r.inUsd), outUsd: round2(r.outUsd) }));
+}
+
+export const getClients = cache(async (): Promise<Client[]> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("clients").select("*").order("archived").order("name");
+  if (error) fail("Load clients", error);
+  return data as Client[];
+});
+
+const DEFAULT_SETTINGS: UserSettings = { tax_rate: 0, cash_on_hand_usd: null, cash_updated_at: null, calendar_token: null };
+
+/** The user's settings row, or defaults when they haven't saved any yet. */
+export const getSettings = cache(async (): Promise<UserSettings> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("user_settings")
+    .select("tax_rate, cash_on_hand_usd, cash_updated_at, calendar_token")
+    .maybeSingle();
+  if (error) fail("Load settings", error);
+  return (data as UserSettings | null) ?? DEFAULT_SETTINGS;
+});
+
+/** Income, costs and margin per client over a date range (USD). Rows without a client are left out. */
+export async function getClientProfit(from: string, to: string) {
+  const [txns, clients] = await Promise.all([getTransactions({ from, to, limit: 100_000 }), getClients()]);
+  const by = new Map(clients.map((c) => [c.id, { client: c, inUsd: 0, outUsd: 0 }]));
+  for (const t of txns) {
+    const row = t.client_id ? by.get(t.client_id) : undefined;
+    if (!row) continue;
+    if (t.direction === "in") row.inUsd += t.amount_usd;
+    else row.outUsd += t.amount_usd;
+  }
+  return [...by.values()]
+    .map((r) => ({ ...r, inUsd: round2(r.inUsd), outUsd: round2(r.outUsd), marginUsd: round2(r.inUsd - r.outUsd) }))
+    .filter((r) => r.inUsd > 0 || r.outUsd > 0 || !r.client.archived)
+    .sort((a, b) => b.marginUsd - a.marginUsd);
 }

@@ -1,0 +1,55 @@
+/* Hallmark · v2.0.0 · theme: custom · idea: "the page is the ledger: every claim is an entry with an amount, shown in the app's own rows" · vibe: "a ledger that fits in your pocket" · genre: modern-minimal · job: sign up · paper: --background (project token, warm grey, dark mode via .dark) · accent: --brand indigo, Restrained (primary action, focus ring, logo arc) · faces: Geist Sans display and body, Geist Mono for figures only · hero: app welcome screen, the home screen above the action on phones, beside it on desktop · posture: left-biased split · axes: light/grotesk/chromatic-indigo · nav: wordmark left, two text links right, no button · footer: one line, wordmark and three links · imagery: product stand-ins 3, built, awaiting capture.mjs · deal: none (custom) */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R5 V4 · weakest: S, a pocket ledger could be any money app; the six-kind ledger table and the RLS policy from schema.sql carry the specifics */
+/* Hallmark · answered F4: two filled primaries (hero and closing band) repeat the one action, as the sign-up anatomy asks */
+
+/* Colours and faces come from globals.css tokens through Tailwind utilities; nothing is declared here. */
+
+/* The one reveal: hero settles once on load. Visible without JS (pure CSS), off under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .landing-rise {
+    animation: landing-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-rise {
+    animation: none;
+  }
+}
+
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* Product frames: inset hairline in ink, no drawn device chrome. */
+.landing-shot {
+  outline: 1px solid color-mix(in oklch, var(--foreground) 8%, transparent);
+  outline-offset: -1px;
+}
+
+/* On phones the hero visual is cropped by the fold, fading into the page like an app's welcome screen. */
+@media (max-width: 1023.98px) {
+  .landing-peek {
+    mask-image: linear-gradient(to bottom, var(--foreground) 70%, transparent);
+  }
+}
+
+/* States for every link and button on the page: an instant ring in the focus token, a press on tap. */
+.landing :is(a, button):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.landing-press:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-press:active {
+    transform: none;
+  }
+}

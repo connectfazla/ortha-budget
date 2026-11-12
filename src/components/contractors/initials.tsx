@@ -10,13 +10,13 @@ export function Initials({ name, className }: { name: string; className?: string
   return (
     <span
       aria-hidden
-      className={cn("bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-md border text-xs font-medium tracking-[0.08em]", className)}
+      className={cn("bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-md border text-xs font-medium", className)}
     >
       {text || "?"}
     </span>
   );
 }
 
-export const LABEL = "text-muted-foreground text-[11px] font-medium tracking-[0.08em] uppercase";
+export const LABEL = "label";
 export const dateLabel = (iso: string) =>
-  new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase();
+  new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
