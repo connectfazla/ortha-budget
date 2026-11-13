@@ -450,6 +450,9 @@ const MAX_RECEIPT = 10 * 1024 * 1024;
 export async function createReceiptUpload(mime: string, size: number): Promise<ActionResult & { path?: string; token?: string }> {
   const userId = await currentUserId();
   if (!userId) return { ok: false, error: "Not signed in" };
+  if ((await (await createClient()).rpc("is_demo_user")).data === true) {
+    return { ok: false, error: "Receipts are turned off in the demo account. Create your own account to attach files." };
+  }
   if (!(mime in RECEIPT_TYPES)) return { ok: false, error: "Use a JPG, PNG, WebP, HEIC or PDF" };
   if (!Number.isInteger(size) || size <= 0 || size > MAX_RECEIPT) return { ok: false, error: "Files can be up to 10 MB" };
   const path = `${userId}/${crypto.randomUUID()}.${RECEIPT_TYPES[mime as keyof typeof RECEIPT_TYPES]}`;
@@ -636,3 +639,8 @@ export async function createSubscription(input: RecurringInput, paidToday: boole
   });
 }
 
+/** Signs in to the shared demo account (data resets every 6 hours). */
+export async function signInDemo(): Promise<ActionResult> {
+  const { error } = await (await createClient()).auth.signInWithPassword({ email: "demo@example.com", password: "demo1234" });
+  return error ? { ok: false, error: "The demo is resetting. Try again in a minute." } : { ok: true };
+}

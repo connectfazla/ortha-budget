@@ -24,6 +24,17 @@ Track tools, retainers, contractor pay and profit per client, in any currency.
 
 </div>
 
+## Try it
+
+Open **[ortha-budget.vercel.app](https://ortha-budget.vercel.app)** and tap **Try the demo** on the sign-in page, or sign in yourself:
+
+| | |
+|---|---|
+| Email | `demo@example.com` |
+| Password | `demo1234` |
+
+It's one shared account with six months of sample data. Anyone can add, edit or delete entries, and everything resets every 6 hours. Receipt uploads are turned off in the demo. For your own private data, create an account; it takes 10 seconds.
+
 ## Why
 
 Agency money is lumpy. Some tools bill monthly, some yearly, and one was a lifetime deal you bought two years ago. Retainers land on different days. Contractors want paying in their own currency. A spreadsheet holds all of that until the day it doesn't.

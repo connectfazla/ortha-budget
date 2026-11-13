@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
-import { signIn, signUp } from "@/lib/actions";
+import { signIn, signInDemo, signUp } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -76,6 +76,24 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
           {pending ? <Spinner /> : null}
           {isUp ? "Create account" : "Sign in"}
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="press h-11 w-full"
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              setError(null);
+              const r = await signInDemo();
+              if (!r.ok) return setError(r.error);
+              router.replace("/");
+              router.refresh();
+            })
+          }
+        >
+          Try the demo
+        </Button>
+        <p className="text-muted-foreground -mt-2 text-center text-xs">Shared sample account. It resets every 6 hours.</p>
         <p className="text-muted-foreground text-center text-sm">
           {isUp ? "Already have an account? " : "New here? "}
           <Link href={isUp ? "/sign-in" : "/sign-up"} className="text-foreground font-medium underline-offset-4 hover:underline">
