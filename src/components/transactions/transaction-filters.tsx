@@ -4,9 +4,9 @@
 // [CP-TX] search field, [VIVID-TL] removable chips, [MERC-FILTER] sheet with sections, Show results + Clear.
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SearchIcon, SlidersHorizontalIcon, XIcon } from "lucide-react";
-import { KINDS, monthKey } from "@/lib/money";
+import { isMonthKey, KINDS, monthKey } from "@/lib/money";
 import type { Client, Direction, TxnKind } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,31 @@ const LABEL = "text-muted-foreground text-xs font-medium";
 const CHIP =
   "h-11 rounded-sm border px-3 text-sm data-pressed:border-foreground data-pressed:bg-foreground data-pressed:text-background";
 
-export function TransactionFilters({ filters, clients = [] }: { filters: Filters; clients?: Client[] }) {
+/**
+ * Filters from the live URL. The server-rendered props can lag a navigation behind (slow networks), and building the
+ * next URL from stale props dropped or restored filters. Values are re-checked here the same way the page checks them.
+ */
+function readFilters(sp: URLSearchParams, clients: Client[]): Filters {
+  const g = (k: string) => sp.get(k) || undefined;
+  const date = (v?: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+  const kind = g("kind");
+  const direction = g("direction");
+  const month = g("month");
+  const clientId = g("clientId");
+  return {
+    q: g("q")?.slice(0, 80),
+    month: month && isMonthKey(month) ? month : undefined,
+    kind: kind && Object.hasOwn(KINDS, kind) ? (kind as TxnKind) : undefined,
+    direction: direction === "in" || direction === "out" ? direction : undefined,
+    clientId: clientId && clients.some((c) => c.id === clientId) ? clientId : undefined,
+    from: date(g("from")),
+    to: date(g("to")),
+  };
+}
+
+export function TransactionFilters({ clients = [] }: { filters?: Filters; clients?: Client[] }) {
+  const searchParams = useSearchParams();
+  const filters = readFilters(searchParams, clients);
   const router = useRouter();
   const pathname = usePathname();
   const [q, setQ] = useState(filters.q ?? "");
