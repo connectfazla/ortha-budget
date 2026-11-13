@@ -10,6 +10,7 @@ export type FeedRow = {
   billing_interval: "weekly" | "monthly" | "quarterly" | "yearly";
   next_due: string; // YYYY-MM-DD
   trial_ends: string | null;
+  cancel_by?: string | null; // YYYY-MM-DD
 };
 
 const RRULE: Record<FeedRow["billing_interval"], string> = {
@@ -22,7 +23,7 @@ const RRULE: Record<FeedRow["billing_interval"], string> = {
 export const rruleFor = (i: FeedRow["billing_interval"]) => RRULE[i];
 
 export function escapeText(s: string) {
-  return s.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r\n|\r|\n/g, "\\n");
+  return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r\n|\r|\n/g, "\\n");
 }
 
 /** Folds a content line at 75 octets (UTF-8), never inside a character. Continuations start with one space. */
@@ -58,7 +59,7 @@ const money = (n: number, cur: string) => {
   }
 };
 
-function event(uid: string, stamp: string, date: string, summary: string, opts: { rrule?: string; alarm: string; description?: string }) {
+function event(uid: string, stamp: string, date: string, summary: string, opts: { rrule?: string; alarm: string; description?: string; trigger?: string }) {
   return [
     "BEGIN:VEVENT",
     `UID:${uid}@ortha-budget`,
@@ -72,7 +73,7 @@ function event(uid: string, stamp: string, date: string, summary: string, opts: 
     "BEGIN:VALARM",
     "ACTION:DISPLAY",
     `DESCRIPTION:${escapeText(opts.alarm)}`,
-    "TRIGGER:-P1D",
+    `TRIGGER:${opts.trigger ?? "-P1D"}`,
     "END:VALARM",
     "END:VEVENT",
   ];
@@ -95,6 +96,10 @@ export function buildCalendar(rows: FeedRow[], now = new Date()) {
     if (r.trial_ends) {
       const t = `${r.name} trial ends`;
       lines.push(...event(`${r.id}-trial`, stamp, r.trial_ends, t, { alarm: t }));
+    }
+    if (r.cancel_by) {
+      const c = `Cancel ${r.name}`;
+      lines.push(...event(`${r.id}-cancel`, stamp, r.cancel_by, c, { alarm: c, trigger: "-P2D" }));
     }
   }
   lines.push("END:VCALENDAR");

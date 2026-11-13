@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { monthKey } from "@/lib/money";
 
 export function shiftMonth(month: string, delta: number) {
@@ -12,26 +14,30 @@ export function monthLabel(month: string, style: "short" | "long" = "long") {
   return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: style, year: style === "long" ? "numeric" : undefined });
 }
 
-const btn =
-  "text-muted-foreground hover:text-foreground hover:bg-muted grid size-10 place-items-center rounded-md border press transition-colors";
-
-export function MonthSwitcher({ month }: { month: string }) {
+/** Prev / month / next. `base` is the page path the `?month=` param goes on; the current month drops the param. */
+export function MonthSwitcher({ month, base = "/", allowFuture = false }: { month: string; base?: string; allowFuture?: boolean }) {
   const now = monthKey();
-  const href = (m: string) => (m === now ? "/" : `/?month=${m}`);
+  const href = (m: string) => (m === now ? base : `${base}?month=${m}`);
+  const step = (delta: -1 | 1, label: string, Icon: typeof ChevronLeft) => (
+    <Tooltip>
+      <TooltipTrigger
+        render={<Button variant="outline" size="icon-lg" className="size-11 lg:size-9" aria-label={label} nativeButton={false} render={<Link href={href(shiftMonth(month, delta))} />} />}
+      >
+        <Icon aria-hidden />
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
   return (
     <div className="flex items-center gap-1">
-      <Link href={href(shiftMonth(month, -1))} aria-label="Previous month" className={btn}>
-        <ChevronLeft className="size-4" />
-      </Link>
+      {step(-1, "Previous month", ChevronLeft)}
       <span className="min-w-28 text-center text-sm font-medium">{monthLabel(month)}</span>
-      {month < now ? (
-        <Link href={href(shiftMonth(month, 1))} aria-label="Next month" className={btn}>
-          <ChevronRight className="size-4" />
-        </Link>
+      {allowFuture || month < now ? (
+        step(1, "Next month", ChevronRight)
       ) : (
-        <span aria-hidden className={btn + " opacity-30"}>
-          <ChevronRight className="size-4" />
-        </span>
+        <Button variant="outline" size="icon-lg" className="size-11 lg:size-9" aria-label="Next month" disabled>
+          <ChevronRight aria-hidden />
+        </Button>
       )}
     </div>
   );

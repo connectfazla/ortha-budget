@@ -5,7 +5,7 @@ import type { Recurring } from "./types.ts";
 
 const base = { vendor: null, currency: "USD", fx_rate: 1, category: "x", contractor_id: null, client_id: null, trial_ends: null, url: null, notes: null, created_at: "" } as const;
 const r = (id: string, next_due: string, billing_interval: Recurring["billing_interval"], amount: number, extra: Partial<Recurring> = {}): Recurring =>
-  ({ ...base, id, name: id, direction: "out", amount, amount_usd: amount, billing_interval, next_due, status: "active", ...extra }) as Recurring;
+  ({ ...base, id, name: id, direction: "out", amount, amount_base: amount, billing_interval, next_due, status: "active", ...extra }) as Recurring;
 
 const today = "2026-11-13";
 // Monthly due in 3 days → 1 charge in 30 days, 3 in 90.

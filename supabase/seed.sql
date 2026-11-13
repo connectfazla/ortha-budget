@@ -1,5 +1,5 @@
--- Optional demo data. Sign up in the app once, copy your Clerk user id (Clerk dashboard → Users, starts with "user_"),
--- paste it below, then run this in the Supabase SQL Editor.
+-- Optional demo data. Sign up in the app once, copy your user id (Supabase → Authentication → Users),
+-- paste it below, then run this in the Supabase SQL Editor. (Or use "Load sample data" in the app.)
 -- Delete later with: delete from transactions; delete from recurring; delete from contractors; delete from budgets;
 
 do $$
@@ -10,7 +10,7 @@ declare
   r_figma uuid;
 begin
   if uid = 'user_REPLACE_ME' then
-    raise exception 'Set uid to your Clerk user id first';
+    raise exception 'Set uid to your user id first';
   end if;
 
   insert into contractors (user_id, name, role, email, rate, rate_type, currency)
@@ -32,7 +32,7 @@ begin
   insert into recurring (user_id, name, direction, amount, currency, fx_rate, billing_interval, next_due, category, contractor_id)
   values (uid, 'Alex monthly', 'out', 45000, 'BDT', 0.0082, 'monthly', current_date + 18, 'Contractors', c_alex);
 
-  insert into transactions (user_id, date, direction, kind, amount, currency, fx_rate, description, category, vendor, contractor_id, recurring_id, replaces_monthly_usd) values
+  insert into transactions (user_id, date, direction, kind, amount, currency, fx_rate, description, category, vendor, contractor_id, recurring_id, replaces_monthly) values
     (uid, current_date - 1,  'in',  'income',       3500,  'USD', 1,      'Website build · Northwind', 'Client work', 'Northwind', null, null, null),
     (uid, current_date - 3,  'out', 'subscription', 45,    'USD', 1,      'Figma Professional', 'Design tools', 'Figma', null, r_figma, null),
     (uid, current_date - 4,  'out', 'contractor',   45000, 'BDT', 0.0082, 'Payout · Alex Rivera', 'Contractors', null, c_alex, null, null),
@@ -47,6 +47,6 @@ begin
     (uid, current_date - 66, 'in',  'income',       4100,  'USD', 1,      'Retainer + extras', 'Client work', null, null, null, null),
     (uid, current_date - 70, 'out', 'expense',      220,   'USD', 1,      'Meta ads test', 'Marketing', 'Meta', null, null, null);
 
-  insert into budgets (user_id, category, monthly_limit_usd) values
+  insert into budgets (user_id, category, monthly_limit) values
     (uid, 'Design tools', 120), (uid, 'AI', 150), (uid, 'Contractors', 1200), (uid, 'Marketing', 300);
 end $$;

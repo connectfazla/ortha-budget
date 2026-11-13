@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,9 +43,12 @@ export function ContractorMenu({ contractor }: { contractor: Contractor }) {
           <Pencil /> Edit
         </Button>
       </ContractorDrawer>
-      <Button variant="destructive" size="lg" className="h-11" onClick={() => setOpen(true)} aria-label="Delete contractor">
-        <Trash2 />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger render={<Button variant="destructive" size="lg" className="h-11" onClick={() => setOpen(true)} aria-label="Delete contractor" />}>
+          <Trash2 />
+        </TooltipTrigger>
+        <TooltipContent>Delete contractor</TooltipContent>
+      </Tooltip>
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -55,7 +60,7 @@ export function ContractorMenu({ contractor }: { contractor: Contractor }) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction variant="destructive" disabled={pending} onClick={remove}>
-              Delete
+              {pending ? <Spinner /> : null} Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

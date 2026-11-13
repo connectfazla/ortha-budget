@@ -4,13 +4,25 @@ import { useState, useTransition, type ReactElement } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Spinner } from "@/components/ui/spinner";
 import { deleteBudget, upsertBudget } from "@/lib/actions";
 import type { Budget } from "@/lib/types";
 
-/** Edit/delete (`budget`) or create (`categories` = unbudgeted picker list). `children` is the trigger. */
-export function BudgetDrawer({ budget, categories = [], children }: { budget?: Budget; categories?: string[]; children: ReactElement }) {
+/** Edit/delete (`budget`) or create (`categories` = unbudgeted picker list). `children` is the trigger. Limits are in `currency` (the base). */
+export function BudgetDrawer({
+  budget,
+  categories = [],
+  currency,
+  children,
+}: {
+  budget?: Budget;
+  categories?: string[];
+  currency: string;
+  children: ReactElement;
+}) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
 
@@ -34,32 +46,26 @@ export function BudgetDrawer({ budget, categories = [], children }: { budget?: B
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>{budget ? budget.category : "New budget"}</DrawerTitle>
-          <DrawerDescription>Monthly limit in USD</DrawerDescription>
+          <DrawerDescription>Monthly limit in {currency}</DrawerDescription>
         </DrawerHeader>
         <form onSubmit={submit} className="flex flex-col gap-4 p-4">
           {!budget && (
-            <div className="grid gap-1.5">
-              <Label htmlFor="category" className="label">Category</Label>
-              <select
-                id="category"
-                name="category"
-                required
-                className="border-input h-11 w-full rounded-md border bg-transparent px-2.5 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm"
-              >
+            <Field>
+              <FieldLabel htmlFor="category">Category</FieldLabel>
+              <NativeSelect id="category" name="category" required className="w-full [&_select]:h-11 [&_select]:text-base md:[&_select]:text-sm">
                 {categories.map((c) => (
-                  <option key={c}>{c}</option>
+                  <NativeSelectOption key={c}>{c}</NativeSelectOption>
                 ))}
-              </select>
-            </div>
+              </NativeSelect>
+            </Field>
           )}
-          <div className="grid gap-1.5">
-            <Label htmlFor="limit" className="label">
-              Limit / month
-            </Label>
-            <Input id="limit" name="limit" required inputMode="decimal" defaultValue={budget?.monthly_limit_usd} className="h-14 text-2xl tracking-tight" />
-          </div>
+          <Field>
+            <FieldLabel htmlFor="limit">Limit per month ({currency})</FieldLabel>
+            <Input id="limit" name="limit" required inputMode="decimal" defaultValue={budget?.monthly_limit} className="h-14 text-2xl tracking-tight" />
+          </Field>
           <Button type="submit" size="lg" className="h-11" disabled={pending}>
-            {pending ? "Saving…" : "Save"}
+            {pending ? <Spinner aria-hidden /> : null}
+            Save
           </Button>
           {budget && (
             <Button

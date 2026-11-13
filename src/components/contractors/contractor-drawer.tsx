@@ -1,23 +1,38 @@
 "use client";
 
-import { useState, useTransition, type ReactElement } from "react";
+import { useId, useState, useTransition, type ReactElement } from "react";
 import { toast } from "sonner";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { createContractor, updateContractor } from "@/lib/actions";
 import { CURRENCIES } from "@/lib/money";
 import type { Contractor, RateType } from "@/lib/types";
 
-const SELECT =
-  "border-input bg-transparent h-11 w-full rounded-md border px-2.5 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm";
-const RATE_TYPES: RateType[] = ["monthly", "hourly", "fixed"];
+// NativeSelect sizes its inner <select>; this lifts it to the 44px touch target the inputs use.
+const NATIVE = "w-full *:data-[slot=native-select]:h-11";
+const RATE_TYPES: { value: RateType; label: string }[] = [
+  { value: "monthly", label: "Month" },
+  { value: "hourly", label: "Hour" },
+  { value: "fixed", label: "Fixed" },
+];
 
 /** Create (no `contractor`) or edit a contractor. `children` is the trigger element. */
-export function ContractorDrawer({ contractor, children }: { contractor?: Contractor; children: ReactElement }) {
+export function ContractorDrawer({
+  contractor,
+  baseCurrency = "USD",
+  children,
+}: {
+  contractor?: Contractor;
+  /** Pre-picked currency for a new contractor. */
+  baseCurrency?: string;
+  children: ReactElement;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -28,26 +43,28 @@ export function ContractorDrawer({ contractor, children }: { contractor?: Contra
           <DrawerDescription className="sr-only">Contractor details</DrawerDescription>
         </DrawerHeader>
         {/* Popup unmounts on close, so form state resets on every open. */}
-        <ContractorForm contractor={contractor} onDone={() => setOpen(false)} />
+        <ContractorForm contractor={contractor} base={baseCurrency} onDone={() => setOpen(false)} />
       </DrawerContent>
     </Drawer>
   );
 }
 
-function ContractorForm({ contractor, onDone }: { contractor?: Contractor; onDone: () => void }) {
+function ContractorForm({ contractor, base, onDone }: { contractor?: Contractor; base: string; onDone: () => void }) {
+  const id = useId();
   const [pending, start] = useTransition();
   const [active, setActive] = useState(contractor?.active ?? true);
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const rate = String(f.get("rate") ?? "").replace(/,/g, "").trim();
     const input = {
       name: String(f.get("name") ?? ""),
       role: String(f.get("role") ?? ""),
       email: String(f.get("email") ?? ""),
-      rate: f.get("rate") ? Number(f.get("rate")) : null,
+      rate: rate ? Number(rate) : null,
       rate_type: (f.get("rate_type") || null) as RateType | null,
-      currency: String(f.get("currency") ?? "USD"),
+      currency: String(f.get("currency") ?? base),
       active,
       notes: String(f.get("notes") ?? ""),
     };
@@ -61,58 +78,64 @@ function ContractorForm({ contractor, onDone }: { contractor?: Contractor; onDon
   }
 
   return (
-        <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-          <Field label="Name">
-            <Input name="name" required defaultValue={contractor?.name} autoComplete="off" className="h-11" />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Role">
-              <Input name="role" defaultValue={contractor?.role ?? ""} className="h-11" />
-            </Field>
-            <Field label="Email">
-              <Input name="email" type="email" defaultValue={contractor?.email ?? ""} className="h-11" />
-            </Field>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <Field label="Rate">
-              <Input name="rate" inputMode="decimal" defaultValue={contractor?.rate ?? ""} className="h-11" />
-            </Field>
-            <Field label="Per">
-              <select name="rate_type" aria-label="Per" defaultValue={contractor?.rate_type ?? "monthly"} className={SELECT}>
-                {RATE_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Currency">
-              <select name="currency" aria-label="Currency" defaultValue={contractor?.currency ?? "USD"} className={SELECT}>
-                {CURRENCIES.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </select>
-            </Field>
-          </div>
-          <Field label="Notes">
-            <Textarea name="notes" defaultValue={contractor?.notes ?? ""} rows={3} />
-          </Field>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="active-switch">Active</Label>
-            <Switch id="active-switch" checked={active} onCheckedChange={setActive} />
-          </div>
-          <Button type="submit" size="lg" className="h-11" disabled={pending}>
-            {pending ? "Saving…" : "Save"}
-          </Button>
-        </form>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="grid gap-1.5 focus-within:[&_input]:ring-2">
-      <span className="label">{label}</span>
-      {children}
-    </label>
+    <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+      <Field>
+        <FieldLabel htmlFor={`${id}-name`} className="label">Name</FieldLabel>
+        <Input id={`${id}-name`} name="name" required defaultValue={contractor?.name} autoComplete="off" className="h-11" />
+      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field>
+          <FieldLabel htmlFor={`${id}-role`} className="label">Role</FieldLabel>
+          <Input id={`${id}-role`} name="role" defaultValue={contractor?.role ?? ""} className="h-11" />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor={`${id}-email`} className="label">Email</FieldLabel>
+          <Input id={`${id}-email`} name="email" type="email" defaultValue={contractor?.email ?? ""} className="h-11" />
+        </Field>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <Field>
+          <FieldLabel htmlFor={`${id}-rate`} className="label">Rate</FieldLabel>
+          <Input id={`${id}-rate`} name="rate" inputMode="decimal" defaultValue={contractor?.rate ?? ""} className="h-11" />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor={`${id}-per`} className="label">Per</FieldLabel>
+          <NativeSelect id={`${id}-per`} name="rate_type" defaultValue={contractor?.rate_type ?? "monthly"} className={NATIVE}>
+            {RATE_TYPES.map((t) => (
+              <NativeSelectOption key={t.value} value={t.value}>
+                {t.label}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor={`${id}-cur`} className="label">Currency</FieldLabel>
+          <NativeSelect id={`${id}-cur`} name="currency" defaultValue={contractor?.currency ?? base} className={NATIVE}>
+            {CURRENCIES.map((c) => (
+              <NativeSelectOption key={c} value={c}>
+                {c}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </Field>
+      </div>
+      <Field>
+        <FieldLabel htmlFor={`${id}-notes`} className="label">Notes</FieldLabel>
+        <Textarea id={`${id}-notes`} name="notes" defaultValue={contractor?.notes ?? ""} rows={3} />
+      </Field>
+      <Field orientation="horizontal" className="min-h-11 justify-between">
+        <FieldLabel htmlFor={`${id}-active`}>Active</FieldLabel>
+        <Switch id={`${id}-active`} checked={active} onCheckedChange={setActive} />
+      </Field>
+      <Button type="submit" size="lg" className="h-11 focus-visible:ring-2 focus-visible:ring-ring/60" disabled={pending}>
+        {pending ? (
+          <>
+            <Spinner /> Saving
+          </>
+        ) : (
+          "Save"
+        )}
+      </Button>
+    </form>
   );
 }

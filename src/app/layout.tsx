@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
 import { Analytics } from "@vercel/analytics/next";
-import { shadcn } from "@clerk/ui/themes";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -30,16 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full">
-        <ClerkProvider
-          signInUrl="/sign-in"
-          signUpUrl="/sign-up"
-          appearance={{ theme: shadcn, variables: { fontFamily: "var(--font-sans-ui)", borderRadius: "0.625rem" } }}
-        >
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             {children}
             <Toaster />
           </ThemeProvider>
-        </ClerkProvider>
         <Analytics />
       </body>
     </html>

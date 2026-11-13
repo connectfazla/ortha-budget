@@ -27,7 +27,7 @@ export type Recurring = {
   amount: number;
   currency: string;
   fx_rate: number;
-  amount_usd: number;
+  amount_base: number;
   billing_interval: BillingInterval;
   next_due: string; // YYYY-MM-DD
   category: string;
@@ -35,6 +35,7 @@ export type Recurring = {
   contractor_id: string | null;
   client_id: string | null;
   trial_ends: string | null; // YYYY-MM-DD, free trial end
+  cancel_by: string | null; // YYYY-MM-DD, reminder to cancel before this date
   url: string | null;
   notes: string | null;
   created_at: string;
@@ -48,14 +49,14 @@ export type Transaction = {
   amount: number;
   currency: string;
   fx_rate: number;
-  amount_usd: number;
+  amount_base: number;
   description: string;
   category: string;
   vendor: string | null;
   contractor_id: string | null;
   client_id: string | null;
   recurring_id: string | null;
-  replaces_monthly_usd: number | null;
+  replaces_monthly: number | null;
   notes: string | null;
   created_at: string;
 };
@@ -70,15 +71,35 @@ export type Client = {
 
 export type UserSettings = {
   tax_rate: number; // % of income to set aside
-  cash_on_hand_usd: number | null;
+  cash_on_hand: number | null;
   cash_updated_at: string | null;
   calendar_token: string | null;
+  base_currency: string; // ISO 4217; every *_base / limit / cash amount is in this currency
+};
+
+export type PriceChange = {
+  id: string;
+  recurring_id: string;
+  old_amount: number;
+  new_amount: number;
+  currency: string;
+  changed_on: string;
+};
+
+export type Attachment = {
+  id: string;
+  transaction_id: string;
+  path: string;
+  name: string;
+  mime: string;
+  size: number;
+  created_at: string;
 };
 
 export type Budget = {
   id: string;
   category: string;
-  monthly_limit_usd: number;
+  monthly_limit: number;
 };
 
 export type MonthSummary = {

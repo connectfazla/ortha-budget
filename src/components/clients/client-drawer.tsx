@@ -6,11 +6,13 @@ import { toast } from "sonner";
 import { Trash2Icon } from "lucide-react";
 import { createClientRecord, deleteClientRecord, updateClientRecord } from "@/lib/actions";
 import type { Client } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
+import { Field, FieldContent, FieldDescription, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,38 +92,33 @@ function Form({ client, onDone }: { client?: Client; onDone: () => void }) {
       }}
     >
       <div className="flex-1 space-y-5 overflow-y-auto p-4">
-        <label className="flex flex-col gap-1.5">
-          <span className="label">Name</span>
-          <Input className="h-11" value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} autoFocus={!client} />
-        </label>
+        <Field>
+          <FieldLabel htmlFor="client-name">Name</FieldLabel>
+          <Input id="client-name" className="h-11" value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} autoFocus={!client} />
+        </Field>
 
-        <fieldset>
-          <legend className="label pb-1.5">Colour</legend>
-          <div className="grid grid-cols-8 gap-2">
+        <FieldSet>
+          <FieldLegend variant="label">Colour</FieldLegend>
+          <ToggleGroup aria-label="Colour" value={[color]} onValueChange={(v) => v[0] && setColor(v[0] as string)} className="grid w-full grid-cols-8 gap-2">
             {SWATCHES.map((s) => (
-              <button
+              <ToggleGroupItem
                 key={s.hex}
-                type="button"
+                value={s.hex}
                 aria-label={s.name}
-                aria-pressed={color === s.hex}
-                onClick={() => setColor(s.hex)}
                 style={{ background: s.hex }}
-                className={cn(
-                  "press focus-visible:ring-ring/50 aspect-square min-h-9 rounded-full outline-none focus-visible:ring-3",
-                  color === s.hex && "ring-foreground ring-2 ring-offset-2 ring-offset-popover",
-                )}
+                className="ring-offset-popover data-pressed:ring-foreground aspect-square h-auto min-h-9 min-w-0 rounded-full p-0 data-pressed:ring-2 data-pressed:ring-offset-2"
               />
             ))}
-          </div>
-        </fieldset>
+          </ToggleGroup>
+        </FieldSet>
 
-        <label className="flex items-center justify-between gap-3">
-          <span>
-            <span className="block text-sm">Archived</span>
-            <span className="text-muted-foreground block text-xs">Moves the client out of the main list. Its numbers stay in reports.</span>
-          </span>
-          <Switch checked={archived} onCheckedChange={setArchived} aria-label="Archived" />
-        </label>
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldLabel htmlFor="client-archived">Archived</FieldLabel>
+            <FieldDescription className="text-xs">Moves the client out of the main list. Its numbers stay in reports.</FieldDescription>
+          </FieldContent>
+          <Switch id="client-archived" checked={archived} onCheckedChange={setArchived} />
+        </Field>
 
         {client ? (
           <AlertDialog>
@@ -146,8 +143,9 @@ function Form({ client, onDone }: { client?: Client; onDone: () => void }) {
         ) : null}
       </div>
       <div className="bg-popover sticky bottom-0 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <Button type="submit" size="lg" className="press h-11 w-full" disabled={pending || !name.trim()}>
-          {pending ? "Saving…" : client ? "Save changes" : "Add client"}
+        <Button type="submit" size="lg" className="h-11 w-full" disabled={pending || !name.trim()}>
+          {pending ? <Spinner aria-hidden /> : null}
+          {client ? "Save changes" : "Add client"}
         </Button>
       </div>
     </form>

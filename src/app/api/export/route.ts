@@ -1,8 +1,8 @@
 import { todayISO } from "@/lib/money";
 import { getTransactions } from "@/lib/data";
-import { auth } from "@clerk/nextjs/server";
+import { currentUserId } from "@/lib/supabase/server";
 
-const COLS = ["date", "direction", "kind", "description", "category", "vendor", "amount", "currency", "fx_rate", "amount_usd", "notes"] as const;
+const COLS = ["date", "direction", "kind", "description", "category", "vendor", "amount", "currency", "fx_rate", "amount_base", "notes"] as const;
 
 function cell(v: unknown) {
   let s = v == null ? "" : String(v);
@@ -11,7 +11,7 @@ function cell(v: unknown) {
 }
 
 export async function GET() {
-  if (!(await auth()).userId) return new Response("Unauthorized", { status: 401 });
+  if (!(await currentUserId())) return new Response("Unauthorized", { status: 401 });
   const rows = await getTransactions({ limit: 100000 });
   const csv = [COLS.join(","), ...rows.map((t) => COLS.map((c) => cell(t[c])).join(","))].join("\r\n");
   return new Response(csv + "\r\n", {

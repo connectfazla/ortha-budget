@@ -8,8 +8,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { SearchIcon, SlidersHorizontalIcon, XIcon } from "lucide-react";
 import { KINDS, monthKey } from "@/lib/money";
 import type { Client, Direction, TxnKind } from "@/lib/types";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
@@ -89,33 +93,46 @@ export function TransactionFilters({ filters, clients = [] }: { filters: Filters
             className="bg-muted h-11 rounded-md border-transparent pl-9"
           />
         </div>
-        <FilterDrawer filters={filters} apply={go} clients={clients}>
-          <Button variant="outline" aria-label="Filters" className="relative size-11 rounded-md">
-            <SlidersHorizontalIcon />
-            {chips.length ? (
-              <span className="bg-brand absolute -top-1 -right-1 grid size-4 place-items-center rounded-sm text-background text-[10px] tabular-nums">
-                {chips.length}
-              </span>
-            ) : null}
-          </Button>
-        </FilterDrawer>
+        <Tooltip>
+          <FilterDrawer filters={filters} apply={go} clients={clients}>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="outline"
+                  aria-label={chips.length ? `Filters, ${chips.length} on` : "Filters"}
+                  className="relative size-11 rounded-md"
+                />
+              }
+            >
+              <SlidersHorizontalIcon />
+              {chips.length ? (
+                <Badge aria-hidden className="bg-brand text-background absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 text-[10px] tabular-nums">
+                  {chips.length}
+                </Badge>
+              ) : null}
+            </TooltipTrigger>
+          </FilterDrawer>
+          <TooltipContent>Filters</TooltipContent>
+        </Tooltip>
       </div>
 
       {chips.length ? (
-        <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] lg:mx-0 lg:px-0">
-          {chips.map((c) => (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => go({ ...filters, [c.key]: undefined })}
-              aria-label={`Remove filter ${c.label}`}
-              className="bg-foreground text-background flex h-11 shrink-0 items-center gap-1.5 rounded-sm px-3 text-sm"
-            >
-              {c.label}
-              <XIcon className="size-3.5" />
-            </button>
-          ))}
-        </div>
+        <ScrollArea className="-mx-4 lg:mx-0">
+          <div className="flex w-max gap-1.5 px-4 pb-2.5 lg:px-0">
+            {chips.map((c) => (
+              <Button
+                key={c.key}
+                onClick={() => go({ ...filters, [c.key]: undefined })}
+                aria-label={`Remove filter ${c.label}`}
+                className="bg-foreground text-background hover:bg-foreground/90 h-11 rounded-sm px-3"
+              >
+                {c.label}
+                <XIcon data-icon="inline-end" className="size-3.5" />
+              </Button>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       ) : null}
     </div>
   );
@@ -180,13 +197,22 @@ function FilterForm({ filters, clients, onApply }: { filters: Filters; clients: 
         <Section label="Date range">
           <div className="grid grid-cols-2 gap-3">
             {(["from", "to"] as const).map((k) => (
-              <label key={k} className="text-sm">
-                <span className={`${LABEL} mb-1 block`}>{k === "from" ? "From" : "To"}</span>
-                <Input type="date" value={draft[k] ?? ""} onChange={(e) => set({ [k]: e.target.value || undefined })} className="h-11 w-full" />
-              </label>
+              <Field key={k} data-invalid={badRange} className="gap-1">
+                <FieldLabel htmlFor={`filter-${k}`} className={LABEL}>
+                  {k === "from" ? "From" : "To"}
+                </FieldLabel>
+                <Input
+                  id={`filter-${k}`}
+                  type="date"
+                  value={draft[k] ?? ""}
+                  aria-invalid={badRange}
+                  onChange={(e) => set({ [k]: e.target.value || undefined })}
+                  className="h-11 w-full"
+                />
+              </Field>
             ))}
           </div>
-          {badRange ? <p role="alert" className="text-destructive mt-2 text-sm">The start date is after the end date.</p> : null}
+          <FieldError className="mt-2">{badRange ? "The start date is after the end date." : null}</FieldError>
         </Section>
         {clients.length ? (
           <Section label="Client">

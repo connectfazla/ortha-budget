@@ -1,5 +1,6 @@
-/* Hallmark · v2.0.0 · theme: custom · idea: "the page is the ledger: every claim is an entry with an amount, shown in the app's own rows" · vibe: "a ledger that fits in your pocket" · genre: modern-minimal · job: sign up · paper: --background (project token, warm grey, dark mode via .dark) · accent: --brand indigo, Restrained (primary action, focus ring, logo arc) · faces: Geist Sans display and body, Geist Mono for figures only · hero: app welcome screen, the home screen above the action on phones, beside it on desktop · posture: left-biased split · axes: light/grotesk/chromatic-indigo · nav: wordmark left, two text links right, no button · footer: one line, wordmark and three links · imagery: product stand-ins 3, built, awaiting capture.mjs · deal: none (custom) */
+/* Hallmark · v2.0.0 · theme: custom · idea: "the page is the ledger: every claim is an entry with an amount, shown in the app's own rows" · vibe: "a ledger that fits in your pocket" · genre: modern-minimal · job: sign up · paper: --background (project token, warm grey, dark mode via .dark) · accent: --brand indigo, Restrained (primary action, focus ring, logo arc) · faces: Geist Sans display and body, Geist Mono for figures only · hero: app welcome screen, the home screen above the action on phones, beside it on desktop · posture: left-biased split · axes: light/grotesk/chromatic-indigo · nav: wordmark left, two text links right, no button · footer: one line, wordmark and three links · imagery: real captures 4 from scripts/capture-screens.mjs, three phone screens in an iPhone 16 Pro frame and one desktop report in a plain figure · deal: none (custom) */
 /* Hallmark · pre-emit critique: P4 H4 E4 S4 R5 V4 · weakest: S, a pocket ledger could be any money app; the six-kind ledger table and the RLS policy from schema.sql carry the specifics */
+/* Hallmark · waive 47b · three iPhone frames, each holding a real capture of the app with sample data · waiver 11: owner requested a real iPhone frame for the app screens on this welcome page */
 /* Hallmark · answered F4: two filled primaries (hero and closing band) repeat the one action, as the sign-up anatomy asks */
 
 /* Colours and faces come from globals.css tokens through Tailwind utilities; nothing is declared here. */
@@ -25,7 +26,7 @@
   }
 }
 
-/* Product frames: inset hairline in ink, no drawn device chrome. */
+/* Desktop capture: inset hairline in ink, no browser chrome. Phone captures sit in iphone.tsx. */
 .landing-shot {
   outline: 1px solid color-mix(in oklch, var(--foreground) 8%, transparent);
   outline-offset: -1px;
@@ -52,4 +53,9 @@
   .landing-press:active {
     transform: none;
   }
+}
+
+/* The phone's soft shadow, from the elevation tokens so it deepens in dark mode. */
+.landing-device {
+  filter: drop-shadow(0 2px 3px var(--elev-mid)) drop-shadow(0 24px 32px var(--elev-deep));
 }

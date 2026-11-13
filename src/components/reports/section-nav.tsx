@@ -9,7 +9,7 @@ const ITEMS = [
   { href: "/budgets", label: "Budgets" },
 ];
 
-/** REPORTS / BUDGETS segmented switch (local to these two pages; PlansNav-style). */
+/** Reports / Budgets segmented switch (local to these two pages; PlansNav-style). */
 export function ReportsNav() {
   const pathname = usePathname();
   return (
@@ -22,7 +22,7 @@ export function ReportsNav() {
             href={i.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex h-9 items-center justify-center rounded-sm text-[11px] font-medium tracking-[0.08em] uppercase transition-colors",
+              "press focus-visible:ring-ring/60 flex h-9 items-center justify-center rounded-sm text-xs font-medium outline-none focus-visible:ring-2",
               active ? "bg-card text-foreground border" : "text-muted-foreground hover:text-foreground",
             )}
           >

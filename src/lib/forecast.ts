@@ -29,9 +29,9 @@ export function forecast(recurring: Recurring[], today: string, days: number) {
       // Overdue: count the unpaid charge once, as due today; skip older missed periods.
       if (iso < today && overdueCounted) continue;
       overdueCounted ||= iso < today;
-      items.push({ id: r.id, name: r.name, date: iso < today ? today : iso, direction: r.direction, amountUsd: r.amount_usd });
-      if (r.direction === "in") inUsd += r.amount_usd;
-      else outUsd += r.amount_usd;
+      items.push({ id: r.id, name: r.name, date: iso < today ? today : iso, direction: r.direction, amountUsd: r.amount_base });
+      if (r.direction === "in") inUsd += r.amount_base;
+      else outUsd += r.amount_base;
     }
   }
   items.sort((a, b) => a.date.localeCompare(b.date));

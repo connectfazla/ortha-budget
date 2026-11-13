@@ -11,7 +11,7 @@ export async function getContractorStats(): Promise<Map<string, ContractorStat>>
   for (const t of txns) {
     if (!t.contractor_id) continue;
     const s = out.get(t.contractor_id) ?? { paidYtdUsd: 0, lastPaid: null };
-    s.paidYtdUsd = round2(s.paidYtdUsd + t.amount_usd);
+    s.paidYtdUsd = round2(s.paidYtdUsd + t.amount_base);
     if (!s.lastPaid || t.date > s.lastPaid) s.lastPaid = t.date;
     out.set(t.contractor_id, s);
   }

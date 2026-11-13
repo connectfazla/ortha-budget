@@ -1,16 +1,24 @@
 "use client";
 
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <div className="mx-auto mt-16 max-w-sm rounded-lg border border-dashed p-6 text-center">
-      <p className="text-money-out text-[11px] font-medium tracking-[0.08em] uppercase">ERROR</p>
-      <h1 className="mt-2 text-lg font-semibold tracking-tight">Something went wrong</h1>
-      <p className="text-muted-foreground mt-1 text-xs break-words">{error.message || "Unexpected error."}</p>
-      <Button className="mt-4" onClick={reset}>
-        Retry
-      </Button>
-    </div>
+    <Empty className="mx-auto mt-16 max-w-sm border">
+      <EmptyHeader>
+        <EmptyMedia variant="icon" className="text-money-out">
+          <AlertTriangle aria-hidden />
+        </EmptyMedia>
+        <EmptyTitle>
+          <h1 className="text-lg font-semibold">Something went wrong</h1>
+        </EmptyTitle>
+        <EmptyDescription className="text-xs break-words">{error.message || "Unexpected error."}</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <Button onClick={reset}>Retry</Button>
+      </EmptyContent>
+    </Empty>
   );
 }

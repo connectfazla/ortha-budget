@@ -24,7 +24,7 @@ export function PlansNav() {
             href={i.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex h-9 items-center justify-center rounded-sm text-xs font-medium transition-colors",
+              "press focus-visible:ring-ring/60 flex h-9 items-center justify-center rounded-sm text-xs font-medium outline-none focus-visible:ring-2",
               active ? "bg-card text-foreground border" : "text-muted-foreground hover:text-foreground",
             )}
           >

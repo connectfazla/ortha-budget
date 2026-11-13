@@ -4,7 +4,7 @@ import type { TransactionInput } from "../../lib/actions.ts";
 import type { TxnKind } from "../../lib/types.ts";
 
 /** Header row written by src/app/api/export/route.ts. Keep in sync. */
-export const OWN_HEADERS = ["date", "direction", "kind", "description", "category", "vendor", "amount", "currency", "fx_rate", "amount_usd", "notes"];
+export const OWN_HEADERS = ["date", "direction", "kind", "description", "category", "vendor", "amount", "currency", "fx_rate", "amount_base", "notes"];
 
 /** RFC4180: quoted fields, "" escapes, commas and newlines inside quotes, CRLF or LF, optional BOM. */
 export function parseCsv(input: string): string[][] {
@@ -113,8 +113,17 @@ const unquote = (s: string) => (/^'[=+\-@\t\r]/.test(s) ? s.slice(1) : s);
 
 export type Built = { rows: TransactionInput[]; skipped: { line: number; reason: string }[] };
 
-/** `signed`: direction comes from the amount's sign. Otherwise from the direction column. */
-export function buildRows(headers: string[], data: string[][], opts: { own: boolean; mapping: Mapping; signed: boolean }): Built {
+/**
+ * `signed`: direction comes from the amount's sign. Otherwise from the direction column.
+ * `base`: the user's base currency. Rows in it (or with no currency column) need no rate; other currencies need
+ * the fx_rate column, which only our own export has, so a mapped file's foreign-currency rows are skipped.
+ */
+export function buildRows(
+  headers: string[],
+  data: string[][],
+  opts: { own: boolean; mapping: Mapping; signed: boolean; base?: string },
+): Built {
+  const base = opts.base ?? "USD";
   const rows: TransactionInput[] = [];
   const skipped: Built["skipped"] = [];
   const h = headers.map((x) => x.trim().toLowerCase());
@@ -142,12 +151,12 @@ export function buildRows(headers: string[], data: string[][], opts: { own: bool
       else return fail("Direction is not in or out");
     } else direction = raw < 0 ? "out" : "in";
 
-    const currency = (get("currency") || "USD").toUpperCase();
+    const currency = (get("currency") || base).toUpperCase();
     if (!(CURRENCIES as readonly string[]).includes(currency)) return fail(`Currency ${currency.slice(0, 8)} is not supported`);
     let fx_rate = 1;
-    if (currency !== "USD") {
+    if (currency !== base) {
       fx_rate = opts.own ? Number(own(r, "fx_rate")) : 0;
-      if (!(fx_rate > 0)) return fail(`${currency} needs an exchange rate`);
+      if (!(fx_rate > 0)) return fail(`${currency} has no rate to ${base}`);
     }
 
     let kind: TxnKind = direction === "in" ? "income" : "expense";

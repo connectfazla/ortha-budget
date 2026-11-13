@@ -48,3 +48,8 @@ next-env.d.ts
 .playwright-mcp/
 .tools/
 .hallmark/
+
+# playwright
+tests/e2e/.auth/
+test-results/
+playwright-report/

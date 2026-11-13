@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { ImportFlow } from "@/components/import/import-flow";
 import { PageHeader } from "@/components/shell/page-header";
-import { requireUser } from "@/lib/data";
+import { getSettings, requireUser } from "@/lib/data";
 
 export default async function ImportPage() {
   await requireUser();
+  const settings = await getSettings();
   return (
     <>
       <PageHeader
@@ -17,7 +18,7 @@ export default async function ImportPage() {
         }
       />
       <div className="max-w-xl">
-        <ImportFlow />
+        <ImportFlow baseCurrency={settings.base_currency} />
       </div>
     </>
   );

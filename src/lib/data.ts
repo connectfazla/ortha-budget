@@ -1,15 +1,22 @@
 import "server-only";
 import { cache } from "react";
-import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_CATEGORIES, KINDS, addMonths, monthKey, monthRange, monthlyEquivalent, round2 } from "@/lib/money";
-import type { Budget, Client, Contractor, UserSettings, Direction, MonthSummary, Recurring, Transaction, TxnKind } from "@/lib/types";
+import type { Attachment, Budget, Client, Contractor, PriceChange, UserSettings, Direction, MonthSummary, Recurring, Transaction, TxnKind } from "@/lib/types";
 
-/** Signed-in Clerk user id, or redirect to sign-in. Call at the top of every (app) page (the proxy also guards). */
+/** Signed-in user id, or redirect to sign-in. Call at the top of every (app) page (the proxy also guards). */
 export const requireUser = cache(async () => {
-  const { userId, redirectToSignIn } = await auth();
-  if (!userId) return redirectToSignIn();
-  return userId;
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) redirect("/sign-in");
+  return data.user.id;
+});
+
+/** The signed-in user's email, for the account menu. */
+export const getUserEmail = cache(async () => {
+  const { data } = await (await createClient()).auth.getUser();
+  return data.user?.email ?? null;
 });
 
 function fail(what: string, error: { message: string }): never {
@@ -75,8 +82,8 @@ export async function getTransactionTotals(f: Omit<TxnFilters, "limit">) {
   let inUsd = 0;
   let outUsd = 0;
   for (const t of rows) {
-    if (t.direction === "in") inUsd += t.amount_usd;
-    else outUsd += t.amount_usd;
+    if (t.direction === "in") inUsd += t.amount_base;
+    else outUsd += t.amount_base;
   }
   return { count: rows.length, inUsd: round2(inUsd), outUsd: round2(outUsd) };
 }
@@ -115,7 +122,7 @@ export async function getContractor(id: string): Promise<Contractor | null> {
 
 export async function getBudgets(): Promise<Budget[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("budgets").select("id, category, monthly_limit_usd").order("category");
+  const { data, error } = await supabase.from("budgets").select("id, category, monthly_limit").order("category");
   if (error) fail("Load budgets", error);
   return data as Budget[];
 }
@@ -138,18 +145,18 @@ export function summarize(month: string, txns: Transaction[], recurring: Recurri
   let outUsd = 0;
   for (const t of txns) {
     // Income counts money in; every other kind counts money out (a refund on a tool doesn't inflate its spend).
-    if ((t.kind === "income") === (t.direction === "in")) byKind[t.kind] += t.amount_usd;
-    if (t.direction === "in") inUsd += t.amount_usd;
+    if ((t.kind === "income") === (t.direction === "in")) byKind[t.kind] += t.amount_base;
+    if (t.direction === "in") inUsd += t.amount_base;
     else {
-      outUsd += t.amount_usd;
-      cats.set(t.category, (cats.get(t.category) ?? 0) + t.amount_usd);
+      outUsd += t.amount_base;
+      cats.set(t.category, (cats.get(t.category) ?? 0) + t.amount_base);
     }
   }
   let recurringOutMonthlyUsd = 0;
   let recurringInMonthlyUsd = 0;
   for (const r of recurring) {
     if (r.status !== "active") continue;
-    const m = monthlyEquivalent(r.amount_usd, r.billing_interval);
+    const m = monthlyEquivalent(r.amount_base, r.billing_interval);
     if (r.direction === "out") recurringOutMonthlyUsd += m;
     else recurringInMonthlyUsd += m;
   }
@@ -183,8 +190,8 @@ export async function getMonthlySeries(months = 6) {
   for (const t of data) {
     const row = rows.get(t.date.slice(0, 7));
     if (!row) continue;
-    if (t.direction === "in") row.inUsd += t.amount_usd;
-    else row.outUsd += t.amount_usd;
+    if (t.direction === "in") row.inUsd += t.amount_base;
+    else row.outUsd += t.amount_base;
   }
   return [...rows.values()].map((r) => ({ ...r, inUsd: round2(r.inUsd), outUsd: round2(r.outUsd) }));
 }
@@ -196,14 +203,14 @@ export const getClients = cache(async (): Promise<Client[]> => {
   return data as Client[];
 });
 
-const DEFAULT_SETTINGS: UserSettings = { tax_rate: 0, cash_on_hand_usd: null, cash_updated_at: null, calendar_token: null };
+const DEFAULT_SETTINGS: UserSettings = { tax_rate: 0, cash_on_hand: null, cash_updated_at: null, calendar_token: null, base_currency: "USD" };
 
 /** The user's settings row, or defaults when they haven't saved any yet. */
 export const getSettings = cache(async (): Promise<UserSettings> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("user_settings")
-    .select("tax_rate, cash_on_hand_usd, cash_updated_at, calendar_token")
+    .select("tax_rate, cash_on_hand, cash_updated_at, calendar_token, base_currency")
     .maybeSingle();
   if (error) fail("Load settings", error);
   return (data as UserSettings | null) ?? DEFAULT_SETTINGS;
@@ -216,11 +223,38 @@ export async function getClientProfit(from: string, to: string) {
   for (const t of txns) {
     const row = t.client_id ? by.get(t.client_id) : undefined;
     if (!row) continue;
-    if (t.direction === "in") row.inUsd += t.amount_usd;
-    else row.outUsd += t.amount_usd;
+    if (t.direction === "in") row.inUsd += t.amount_base;
+    else row.outUsd += t.amount_base;
   }
   return [...by.values()]
     .map((r) => ({ ...r, inUsd: round2(r.inUsd), outUsd: round2(r.outUsd), marginUsd: round2(r.inUsd - r.outUsd) }))
     .filter((r) => r.inUsd > 0 || r.outUsd > 0 || !r.client.archived)
     .sort((a, b) => b.marginUsd - a.marginUsd);
+}
+
+/** Price history for one plan (newest first), or for all plans when no id is given. */
+export async function getPriceChanges(recurringId?: string): Promise<PriceChange[]> {
+  const supabase = await createClient();
+  let q = supabase.from("price_changes").select("id, recurring_id, old_amount, new_amount, currency, changed_on").order("changed_on", { ascending: false });
+  if (recurringId) q = q.eq("recurring_id", recurringId);
+  const { data, error } = await q.limit(500);
+  if (error) fail("Load price changes", error);
+  return data as PriceChange[];
+}
+
+export async function getAttachments(transactionId: string): Promise<Attachment[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("attachments").select("*").eq("transaction_id", transactionId).order("created_at");
+  if (error) fail("Load attachments", error);
+  return data as Attachment[];
+}
+
+/** Transaction ids that have at least one receipt, for the paperclip marker in lists. */
+export async function getAttachmentCounts(): Promise<Map<string, number>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("attachments").select("transaction_id").limit(10_000);
+  if (error) fail("Load attachments", error);
+  const m = new Map<string, number>();
+  for (const r of data as { transaction_id: string }[]) m.set(r.transaction_id, (m.get(r.transaction_id) ?? 0) + 1);
+  return m;
 }

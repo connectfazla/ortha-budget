@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { Money } from "@/components/money";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyDescription } from "@/components/ui/empty";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from "@/components/ui/item";
+import { Separator } from "@/components/ui/separator";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 
 type Item = { id: string; name: string; date: string; direction: "in" | "out"; amountUsd: number };
@@ -11,7 +16,17 @@ const fmt = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 /** Items cover the 90-day horizon; each window filters by its cutoff date, so no refetch. */
-export function ForecastCard({ items, today, cutoffs }: { items: Item[]; today: string; cutoffs: Record<number, string> }) {
+export function ForecastCard({
+  items,
+  today,
+  cutoffs,
+  currency,
+}: {
+  items: Item[];
+  today: string;
+  cutoffs: Record<number, string>;
+  currency: string;
+}) {
   const [days, setDays] = useState<(typeof WINDOWS)[number]>(30);
   const inWindow = items.filter((i) => i.date <= cutoffs[days]);
   const inUsd = inWindow.filter((i) => i.direction === "in").reduce((a, i) => a + i.amountUsd, 0);
@@ -20,58 +35,65 @@ export function ForecastCard({ items, today, cutoffs }: { items: Item[]; today: 
   const next = inWindow.slice(0, 5);
 
   return (
-    <section className="bg-card shadow-card rounded-xl border p-4" aria-label="Forecast">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="label">Coming up</h2>
-        <div role="radiogroup" aria-label="Forecast window" className="bg-muted grid grid-cols-3 gap-0.5 rounded-lg p-0.5">
-          {WINDOWS.map((w) => (
-            <button
-              key={w}
-              type="button"
-              role="radio"
-              aria-checked={days === w}
-              onClick={() => setDays(w)}
-              className={cn(
-                "press focus-visible:ring-ring/50 h-8 min-w-12 rounded-md px-2 text-xs font-medium transition-colors focus-visible:ring-2 disabled:opacity-50 active:opacity-80",
-                days === w ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {w} days
-            </button>
-          ))}
-        </div>
-      </div>
-      <dl className="mt-4 grid grid-cols-3 gap-3">
-        <div className="min-w-0">
-          <dt className="label">Money in</dt>
-          <dd className="mt-1 text-base font-medium"><Money value={inUsd} direction="in" hideCents /></dd>
-        </div>
-        <div className="min-w-0">
-          <dt className="label">Money out</dt>
-          <dd className="mt-1 text-base font-medium"><Money value={outUsd} direction="out" hideCents /></dd>
-        </div>
-        <div className="min-w-0">
-          <dt className="label">Net</dt>
-          <dd className={cn("mt-1 text-base font-medium", net < 0 && "text-money-out")}><Money value={net} hideCents /></dd>
-        </div>
-      </dl>
-      {next.length === 0 ? (
-        <p className="text-muted-foreground mt-4 rounded-lg border border-dashed p-4 text-center text-sm">Nothing scheduled in the next {days} days.</p>
-      ) : (
-        <ul className="mt-4 divide-y border-t">
-          {next.map((i, n) => (
-            <li key={`${i.id}-${n}`} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-              <div className="min-w-0">
-                <p className="truncate">{i.name}</p>
-                <p className={cn("text-xs", i.date <= today ? "text-warn" : "text-muted-foreground")}>
-                  {i.date === today ? "Due today" : fmt(i.date)}
-                </p>
-              </div>
-              <Money value={i.amountUsd} direction={i.direction} className="shrink-0 text-[13px]" />
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+    <Card>
+      <CardHeader className="items-center">
+        <CardTitle>
+          <h2 className="label">Coming up</h2>
+        </CardTitle>
+        <CardAction>
+          <ToggleGroup
+            aria-label="Forecast window"
+            value={[String(days)]}
+            onValueChange={(v) => v[0] && setDays(Number(v[0]) as (typeof WINDOWS)[number])}
+            spacing={0}
+            className="bg-muted rounded-lg"
+          >
+            {WINDOWS.map((w) => (
+              <ToggleGroupItem key={w} value={String(w)} className="text-muted-foreground data-pressed:text-foreground h-8 min-w-14 text-xs">
+                {w} days
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <dl className="grid grid-cols-3 gap-3">
+          <div className="min-w-0">
+            <dt className="label">Money in</dt>
+            <dd className="mt-1 text-base font-medium"><Money value={inUsd} currency={currency} direction="in" hideCents /></dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="label">Money out</dt>
+            <dd className="mt-1 text-base font-medium"><Money value={outUsd} currency={currency} direction="out" hideCents /></dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="label">Net</dt>
+            <dd className={cn("mt-1 text-base font-medium", net < 0 && "text-money-out")}><Money value={net} currency={currency} hideCents /></dd>
+          </div>
+        </dl>
+        <Separator className="mt-4" />
+        {next.length === 0 ? (
+          <Empty className="p-4">
+            <EmptyDescription>Nothing scheduled in the next {days} days.</EmptyDescription>
+          </Empty>
+        ) : (
+          <ItemGroup className="gap-0 divide-y">
+            {next.map((i, n) => (
+              <Item key={`${i.id}-${n}`} role="listitem" size="sm" className="rounded-none px-0">
+                <ItemContent className="min-w-0 gap-0">
+                  <ItemTitle className="w-full truncate font-normal">{i.name}</ItemTitle>
+                  <ItemDescription className={cn("text-xs", i.date <= today && "text-warn")}>
+                    {i.date === today ? "Due today" : fmt(i.date)}
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <Money value={i.amountUsd} currency={currency} direction={i.direction} className="text-[13px]" />
+                </ItemActions>
+              </Item>
+            ))}
+          </ItemGroup>
+        )}
+      </CardContent>
+    </Card>
   );
 }

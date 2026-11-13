@@ -2,12 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, Pencil, Plus } from "lucide-react";
 import { ClientDrawer } from "@/components/clients/client-drawer";
-import { Swatch } from "@/components/clients/client-row";
+import { ClientAvatar } from "@/components/clients/client-row";
 import { AddEntryDrawer } from "@/components/entry/add-entry-drawer";
 import { Money } from "@/components/money";
 import { TransactionList } from "@/components/transactions/transaction-list";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getCategories, getClientProfit, getClients, getContractors, getRecurring, getTransactions, requireUser } from "@/lib/data";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyDescription } from "@/components/ui/empty";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from "@/components/ui/item";
+import { Separator } from "@/components/ui/separator";
+import { getCategories, getClientProfit, getClients, getContractors, getRecurring, getSettings, getTransactions, requireUser } from "@/lib/data";
 import { INTERVALS, todayISO } from "@/lib/money";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -21,14 +26,16 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   if (!UUID.test(id)) notFound();
   const year = todayISO().slice(0, 4);
-  const [clients, profit, txns, recurring, contractors, categories] = await Promise.all([
+  const [clients, profit, txns, recurring, contractors, categories, settings] = await Promise.all([
     getClients(),
     getClientProfit(`${year}-01-01`, `${year}-12-31`),
     getTransactions({ clientId: id, limit: 200 }),
     getRecurring(),
     getContractors(),
     getCategories(),
+    getSettings(),
   ]);
+  const base = settings.base_currency;
   const client = clients.find((c) => c.id === id);
   if (!client) notFound();
   const p = profit.find((x) => x.client.id === id);
@@ -39,46 +46,54 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
 
   return (
     <>
-      <Link href="/clients" className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 rounded-sm outline-none focus-visible:ring-3 -ml-1 flex h-11 items-center gap-1 text-sm">
-        <ChevronLeft className="size-4" aria-hidden /> Clients
-      </Link>
+      <Button variant="ghost" className="text-muted-foreground -ml-2 h-11 gap-1 px-2" nativeButton={false} render={<Link href="/clients" />}>
+        <ChevronLeft aria-hidden /> Clients
+      </Button>
       <header className="flex items-center gap-2.5 pb-4">
-        <Swatch color={client.color} className="size-4" />
+        <ClientAvatar client={client} size="default" />
         <h1 className="truncate text-[22px] leading-7 font-semibold tracking-tight">{client.name}</h1>
-        {client.archived ? <span className="text-muted-foreground rounded-sm border px-1.5 py-px text-xs">Archived</span> : null}
+        {client.archived ? <Badge variant="outline">Archived</Badge> : null}
       </header>
 
-      <section aria-label={`${client.name} margin in ${year}`} className="bg-card rounded-lg border p-4">
-        <p className="label">Margin in {year}</p>
-        <Money
-          animate
-          value={margin}
-          className={`mt-1 block text-4xl font-semibold tracking-tight ${margin < 0 ? "text-money-out" : margin > 0 ? "text-money-in" : ""}`}
-        />
-        <dl className="mt-4 grid grid-cols-2 divide-x border-t pt-3">
-          <div>
-            <dt className="label">In</dt>
-            <dd className="mt-0.5 text-lg font-medium">
-              <Money value={inUsd} direction="in" hideCents />
-            </dd>
-          </div>
-          <div className="pl-4">
-            <dt className="label">Out</dt>
-            <dd className="mt-0.5 text-lg font-medium">
-              <Money value={outUsd} hideCents />
-            </dd>
-          </div>
-        </dl>
-      </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <h2 className="label">Margin in {year}</h2>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Money
+            animate
+            value={margin}
+            currency={base}
+            className={`block text-4xl font-semibold tracking-tight ${margin < 0 ? "text-money-out" : margin > 0 ? "text-money-in" : ""}`}
+          />
+          <Separator className="mt-4" />
+          <dl className="grid grid-cols-2 divide-x pt-3">
+            <div>
+              <dt className="label">In</dt>
+              <dd className="mt-0.5 text-lg font-medium">
+                <Money value={inUsd} currency={base} direction="in" hideCents />
+              </dd>
+            </div>
+            <div className="pl-4">
+              <dt className="label">Out</dt>
+              <dd className="mt-0.5 text-lg font-medium">
+                <Money value={outUsd} currency={base} hideCents />
+              </dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
 
       <div className="flex gap-2 py-4">
-        <AddEntryDrawer contractors={contractors} categories={categories} clients={clients} defaultClientId={id}>
-          <Button size="lg" className="press h-11 flex-[2]">
+        <AddEntryDrawer contractors={contractors} categories={categories} clients={clients} defaultClientId={id} baseCurrency={base}>
+          <Button size="lg" className="h-11 flex-[2]">
             <Plus /> Add transaction
           </Button>
         </AddEntryDrawer>
         <ClientDrawer client={client}>
-          <Button variant="outline" size="lg" className="press h-11 flex-1">
+          <Button variant="outline" size="lg" className="h-11 flex-1">
             <Pencil /> Edit
           </Button>
         </ClientDrawer>
@@ -86,28 +101,28 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
 
       <h2 className="label pb-2">Retainers and plans</h2>
       {plans.length === 0 ? (
-        <p className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
-          No recurring plans. Tag a retainer with this client under{" "}
-          <Link href="/subscriptions" className="text-foreground focus-visible:ring-ring/50 rounded-sm outline-none focus-visible:ring-3 underline underline-offset-2">
-            Subscriptions
-          </Link>
-          .
-        </p>
+        <Empty className="border p-6">
+          <EmptyDescription>
+            No recurring plans. Tag a retainer with this client under <Link href="/subscriptions" className="focus-visible:ring-ring/60 rounded-sm outline-none focus-visible:ring-2">Subscriptions</Link>.
+          </EmptyDescription>
+        </Empty>
       ) : (
-        <ul className="bg-card divide-y rounded-lg border">
-          {plans.map((r) => (
-            <li key={r.id} className="flex min-h-14 items-center justify-between gap-3 px-3 py-2">
-              <span className="min-w-0">
-                <span className="block truncate text-sm">{r.name}</span>
-                <span className="text-muted-foreground block text-xs">Next due {day(r.next_due)}</span>
-              </span>
-              <span className="text-right">
-                <Money value={r.amount} currency={r.currency} direction={r.direction} className="block text-sm font-medium" />
-                <span className="text-muted-foreground block text-xs">{INTERVALS[r.billing_interval].label}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
+        <Card className="gap-0 py-0">
+          <ItemGroup className="gap-0 divide-y">
+            {plans.map((r) => (
+              <Item key={r.id} role="listitem" className="min-h-14 rounded-none px-3 py-2">
+                <ItemContent className="min-w-0 gap-0">
+                  <ItemTitle className="w-full truncate font-normal">{r.name}</ItemTitle>
+                  <ItemDescription className="text-xs">Next due {day(r.next_due)}</ItemDescription>
+                </ItemContent>
+                <ItemActions className="flex-col items-end gap-0">
+                  <Money value={r.amount_base} currency={base} direction={r.direction} className="text-sm font-medium" />
+                  <span className="text-muted-foreground text-xs">{INTERVALS[r.billing_interval].label}</span>
+                </ItemActions>
+              </Item>
+            ))}
+          </ItemGroup>
+        </Card>
       )}
 
       <h2 className="label pt-6 pb-2">Transactions</h2>

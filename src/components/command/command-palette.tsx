@@ -6,13 +6,14 @@
 // https://mobbin.com/screens/28338d7a-25d5-4fd0-8357-9a770b30ac00
 // Ctrl/Cmd+K opens it. n = new transaction, g then h/t/s/r = go to a page, ? = shortcut list.
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { BarChart3, FileUp, Gift, Home, ListOrdered, MoonIcon, PiggyBank, Plus, Repeat, SearchIcon, Settings, Users, type LucideIcon } from "lucide-react";
 import { AddEntryDrawer } from "@/components/entry/add-entry-drawer";
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import type { Client, Contractor } from "@/lib/types";
 
 const PAGES: { href: string; label: string; icon: LucideIcon; keys?: string }[] = [
@@ -28,14 +29,15 @@ const PAGES: { href: string; label: string; icon: LucideIcon; keys?: string }[] 
 ];
 const GO: Record<string, string> = { h: "/", t: "/transactions", s: "/subscriptions", r: "/reports" };
 
-const SHORTCUTS: [string, string][] = [
-  ["Open the command palette", "Ctrl K or Cmd K"],
-  ["New transaction", "n"],
-  ["Go to Home", "g then h"],
-  ["Go to Transactions", "g then t"],
-  ["Go to Subscriptions", "g then s"],
-  ["Go to Reports", "g then r"],
-  ["Show this list", "?"],
+/** What it does, the key combos (each a list of keys pressed together), and the word between combos. */
+const SHORTCUTS: [string, string[][], ("or" | "then")?][] = [
+  ["Open the command palette", [["Ctrl", "K"], ["Cmd", "K"]], "or"],
+  ["New transaction", [["n"]]],
+  ["Go to Home", [["g"], ["h"]], "then"],
+  ["Go to Transactions", [["g"], ["t"]], "then"],
+  ["Go to Subscriptions", [["g"], ["s"]], "then"],
+  ["Go to Reports", [["g"], ["r"]], "then"],
+  ["Show this list", [["?"]]],
 ];
 
 /** Typing in a field, or another dialog is open: leave single-key shortcuts alone. */
@@ -44,7 +46,18 @@ function typing(t: EventTarget | null) {
   return Boolean(el?.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])"));
 }
 
-export function CommandPalette({ contractors, categories, clients }: { contractors: Contractor[]; categories: string[]; clients?: Client[] }) {
+export function CommandPalette({
+  contractors,
+  categories,
+  clients,
+  baseCurrency,
+}: {
+  contractors: Contractor[];
+  categories: string[];
+  clients?: Client[];
+  /** The user's base currency (settings), passed to the add-entry drawer. */
+  baseCurrency?: string;
+}) {
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
@@ -91,7 +104,7 @@ export function CommandPalette({ contractors, categories, clients }: { contracto
   return (
     <>
       <span ref={addRef} className="hidden">
-        <AddEntryDrawer contractors={contractors} categories={categories} clients={clients}>
+        <AddEntryDrawer contractors={contractors} categories={categories} clients={clients} baseCurrency={baseCurrency}>
           <button type="button" tabIndex={-1} aria-hidden />
         </AddEntryDrawer>
       </span>
@@ -152,11 +165,20 @@ export function CommandPalette({ contractors, categories, clients }: { contracto
             <DialogDescription>Shortcuts pause while you type in a field.</DialogDescription>
           </DialogHeader>
           <dl className="divide-y text-sm">
-            {SHORTCUTS.map(([what, keys]) => (
+            {SHORTCUTS.map(([what, combos, join]) => (
               <div key={what} className="flex items-center justify-between gap-3 py-2">
                 <dt>{what}</dt>
-                <dd>
-                  <kbd className="bg-muted rounded-sm border px-1.5 py-0.5 font-mono text-xs">{keys}</kbd>
+                <dd className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                  {combos.map((keys, i) => (
+                    <Fragment key={i}>
+                      {i > 0 ? <span>{join}</span> : null}
+                      <KbdGroup>
+                        {keys.map((k) => (
+                          <Kbd key={k}>{k}</Kbd>
+                        ))}
+                      </KbdGroup>
+                    </Fragment>
+                  ))}
                 </dd>
               </div>
             ))}
@@ -167,6 +189,13 @@ export function CommandPalette({ contractors, categories, clients }: { contracto
   );
 }
 
-function Hint({ children }: { children: React.ReactNode }) {
-  return <kbd className="text-muted-foreground ml-auto font-mono text-xs">{children}</kbd>;
+/** Space-separated keys pressed in sequence, e.g. "g h". */
+function Hint({ children }: { children: string }) {
+  return (
+    <KbdGroup className="ml-auto">
+      {children.split(" ").map((k) => (
+        <Kbd key={k}>{k}</Kbd>
+      ))}
+    </KbdGroup>
+  );
 }

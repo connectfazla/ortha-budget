@@ -6,7 +6,7 @@
 // - transaction: when set, the drawer edits that row instead of creating one.
 // Layout: brief §2 [YNAB-ADD][GOPAY-ADD][CASH-AMT][BINANCE-AMT][BREX-ADD].
 
-import { useEffect, useId, useRef, useState, useTransition, type ReactElement, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useTransition, type ReactElement } from "react";
 import { toast } from "sonner";
 import { Trash2Icon, XIcon } from "lucide-react";
 import { createTransaction, deleteTransaction, updateTransaction, type TransactionInput } from "@/lib/actions";
@@ -14,9 +14,15 @@ import { CURRENCIES, KINDS, formatMoney, round2 } from "@/lib/money";
 import type { Client, Contractor, Direction, Transaction, TxnKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Spinner } from "@/components/ui/spinner";
+import { Receipts } from "@/components/receipts/receipts";
 import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { baseRate, useDesktop } from "./fx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
@@ -42,32 +48,24 @@ export type AddEntryDrawerProps = {
   /** Pre-pick this client (new entries from a client page). */
   defaultClientId?: string;
   transaction?: Transaction;
+  /** The user's base currency (settings). Amounts convert into it; it needs no FX rate. */
+  baseCurrency?: string;
 };
 
 const KIND_KEYS = Object.keys(KINDS) as TxnKind[];
-
-// USD-per-unit rates from open.er-api.com, fetched once per page load and only when a non-USD currency is picked.
-let ratesPromise: Promise<Record<string, number>> | null = null;
-function usdRate(cur: string): Promise<number | null> {
-  ratesPromise ??= fetch("https://open.er-api.com/v6/latest/USD")
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-    .then((j: { rates?: Record<string, number> }) => j.rates ?? {})
-    .catch(() => {
-      ratesPromise = null; // let a later pick retry
-      return {};
-    });
-  return ratesPromise.then((rates) => (rates[cur] > 0 ? Number((1 / rates[cur]).toPrecision(6)) : null));
-}
 
 const num = (s: string) => Number(s.replace(/,/g, "").trim());
 const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
 
 export function AddEntryDrawer({ children, ...props }: AddEntryDrawerProps) {
   const [open, setOpen] = useState(false);
+  // Desktop: a right-hand panel keeps the list visible beside the form (Stripe "Add Transaction rule",
+  // incident.io "Declare incident"). Mobile: the bottom sheet.
+  const desktop = useDesktop();
   return (
-    <Drawer open={open} onOpenChange={setOpen} showSwipeHandle>
+    <Drawer open={open} onOpenChange={setOpen} swipeDirection={desktop ? "right" : "down"} showSwipeHandle={!desktop}>
       <DrawerTrigger render={children} />
-      <DrawerContent className="h-[92dvh] max-h-[92dvh] rounded-t-xl lg:mx-auto lg:max-w-[480px] lg:border-x">
+      <DrawerContent className="max-lg:h-[92dvh] max-lg:max-h-[92dvh] max-lg:rounded-t-xl lg:h-dvh lg:max-h-dvh lg:w-[440px] lg:border-l">
         {/* The popup unmounts when closed, so the form re-initialises (resets) on every open. */}
         <EntryForm {...props} onDone={() => setOpen(false)} />
       </DrawerContent>
@@ -83,6 +81,7 @@ function EntryForm({
   clients,
   defaultClientId,
   transaction: t,
+  baseCurrency: base = "USD",
   onDone,
 }: Omit<AddEntryDrawerProps, "children"> & { onDone: () => void }) {
   const id = useId();
@@ -91,34 +90,34 @@ function EntryForm({
   const [kind, setKind] = useState<TxnKind>(t?.kind ?? defaultKind);
   const [direction, setDirection] = useState<Direction>(t?.direction ?? KINDS[defaultKind].direction);
   const [amount, setAmount] = useState(t ? String(t.amount) : "");
-  const [currency, setCurrency] = useState(t?.currency ?? preset?.currency ?? "USD");
-  const [fx, setFx] = useState(t && t.currency !== "USD" ? String(t.fx_rate) : "");
+  const [currency, setCurrency] = useState(t?.currency ?? preset?.currency ?? base);
+  const [fx, setFx] = useState(t && t.currency !== base ? String(t.fx_rate) : "");
   const [description, setDescription] = useState(t?.description ?? (preset ? `Payout, ${preset.name}` : ""));
   const [category, setCategory] = useState(t?.category ?? (preset ? "Contractors" : ""));
   const [vendor, setVendor] = useState(t?.vendor ?? "");
   const [date, setDate] = useState(t?.date ?? today);
   const [notes, setNotes] = useState(t?.notes ?? "");
-  const [replaces, setReplaces] = useState(t?.replaces_monthly_usd != null ? String(t.replaces_monthly_usd) : "");
+  const [replaces, setReplaces] = useState(t?.replaces_monthly != null ? String(t.replaces_monthly) : "");
   const [contractorId, setContractorId] = useState<string | null>(t?.contractor_id ?? preset?.id ?? null);
   const [clientId, setClientId] = useState<string>(t?.client_id ?? defaultClientId ?? "none");
   const [showErrors, setShowErrors] = useState(false);
   const latestCurrency = useRef(currency);
 
-  // Prefill the FX rate once when the form opens on a preset non-USD contractor.
+  // Prefill the FX rate once when the form opens on a preset contractor paid in another currency.
   const presetCurrency = preset?.currency;
   useEffect(() => {
-    if (!presetCurrency || presetCurrency === "USD") return;
-    usdRate(presetCurrency).then((rate) => {
+    if (!presetCurrency || presetCurrency === base) return;
+    baseRate(presetCurrency, base).then((rate) => {
       if (rate && latestCurrency.current === presetCurrency) setFx((f) => (f === "" ? String(rate) : f));
     });
-  }, [presetCurrency]);
+  }, [presetCurrency, base]);
 
-  const isUsd = currency === "USD";
+  const isBase = currency === base;
   const amountN = num(amount);
-  const fxN = isUsd ? 1 : num(fx);
+  const fxN = isBase ? 1 : num(fx);
   const errors = {
     amount: !(amountN > 0) ? "Enter an amount above 0" : null,
-    fx: !isUsd && !(fxN > 0) ? "Enter the FX rate to USD" : null,
+    fx: !isBase && !(fxN > 0) ? `Enter what 1 ${currency} is in ${base}` : null,
     description: !description.trim() ? "Description is required" : null,
   };
   const firstError = errors.amount ?? errors.fx ?? errors.description;
@@ -127,9 +126,9 @@ function EntryForm({
     latestCurrency.current = cur;
     setCurrency(cur);
     setFx("");
-    if (cur === "USD") return;
+    if (cur === base) return;
     // Nicety only: prefill if the free API answers and the user hasn't typed a rate or switched currency.
-    usdRate(cur).then((rate) => {
+    baseRate(cur, base).then((rate) => {
       if (rate && latestCurrency.current === cur) setFx((f) => (f === "" ? String(rate) : f));
     });
   }
@@ -161,7 +160,7 @@ function EntryForm({
       vendor: vendor.trim() || null,
       contractor_id: kind === "contractor" ? contractorId : null,
       client_id: clientId === "none" ? null : clientId,
-      replaces_monthly_usd: kind === "lifetime" && replaces.trim() ? num(replaces) : null,
+      replaces_monthly: kind === "lifetime" && replaces.trim() ? num(replaces) : null,
       notes: notes.trim() || null,
     };
     startTransition(async () => {
@@ -184,6 +183,7 @@ function EntryForm({
 
   const clientItems = [{ value: "none", label: "None" }, ...(clients ?? []).map((c) => ({ value: c.id, label: c.name }))];
   const contractorItems = Object.fromEntries(contractors.map((c) => [c.id, c.name]));
+  const err = (k: keyof typeof errors) => (showErrors ? errors[k] : null);
 
   return (
     <form
@@ -204,23 +204,26 @@ function EntryForm({
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
         {/* Type chips [GOPAY-ADD]: picking one sets the direction default. */}
-        <ToggleGroup
-          aria-label="Type"
-          value={[kind]}
-          onValueChange={(v) => {
-            const k = v[0] as TxnKind | undefined;
-            if (!k) return; // keep one pressed
-            setKind(k);
-            setDirection(KINDS[k].direction);
-          }}
-          className="-mx-4 w-auto max-w-none gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none]"
-        >
-          {KIND_KEYS.map((k) => (
-            <ToggleGroupItem key={k} value={k} className={CHIP}>
-              {KINDS[k].label}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+        <ScrollArea className="-mx-4">
+          <ToggleGroup
+            aria-label="Type"
+            value={[kind]}
+            onValueChange={(v) => {
+              const k = v[0] as TxnKind | undefined;
+              if (!k) return; // keep one pressed
+              setKind(k);
+              setDirection(KINDS[k].direction);
+            }}
+            className="w-max gap-1.5 px-4 pb-2.5"
+          >
+            {KIND_KEYS.map((k) => (
+              <ToggleGroupItem key={k} value={k} className={CHIP}>
+                {KINDS[k].label}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
         {/* Outflow / Inflow [YNAB-ADD]: separate because a retainer is an "in" subscription. */}
         <ToggleGroup
@@ -229,7 +232,7 @@ function EntryForm({
           onValueChange={(v) => v[0] && setDirection(v[0] as Direction)}
           spacing={0}
           variant="outline"
-          className="mt-3 grid w-full grid-cols-2"
+          className="mt-1 grid w-full grid-cols-2"
         >
           <ToggleGroupItem value="out" className={SEGMENT}>
             Outflow
@@ -239,68 +242,80 @@ function EntryForm({
           </ToggleGroupItem>
         </ToggleGroup>
 
-        {/* Amount [CASH-AMT][BREX-ADD] */}
-        <div className="mt-5 flex items-center gap-2">
-          <Select value={currency} onValueChange={(v) => v && pickCurrency(v)}>
-            <SelectTrigger aria-label="Currency" className="h-11 rounded-md px-2.5 text-sm font-medium">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CURRENCIES.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <span
-            aria-hidden
-            className={cn("text-[48px] leading-none tracking-tight", direction === "in" ? "text-money-in" : "text-muted-foreground")}
-          >
-            {direction === "in" ? "+" : "−"}
-          </span>
-          <label htmlFor={`${id}-amt`} className="sr-only">
-            Amount
-          </label>
-          <input
-            id={`${id}-amt`}
-            inputMode="decimal"
-            autoComplete="off"
-            placeholder="0.00"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))}
-            aria-invalid={showErrors && !!errors.amount}
-            className={cn(
-              "min-w-0 flex-1 bg-transparent text-[48px] leading-none font-medium tracking-tight tabular-nums outline-none placeholder:text-muted-foreground/50 aria-invalid:text-money-out",
-              direction === "in" && "text-money-in",
-            )}
-          />
-        </div>
+        {/* Amount [CASH-AMT][BREX-ADD]. The big number stays a raw input (a display number, not a form box). */}
+        <Field data-invalid={!!err("amount")} className="mt-5 gap-1">
+          <FieldLabel htmlFor={`${id}-amt`} className="sr-only">
+            Amount in {currency}
+          </FieldLabel>
+          <div className="flex items-center gap-2">
+            <Select value={currency} onValueChange={(v) => v && pickCurrency(v)}>
+              <SelectTrigger aria-label="Currency" className="h-11 rounded-md px-2.5 text-sm font-medium">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span
+              aria-hidden
+              className={cn("text-[48px] leading-none tracking-tight", direction === "in" ? "text-money-in" : "text-muted-foreground")}
+            >
+              {direction === "in" ? "+" : "−"}
+            </span>
+            <input
+              id={`${id}-amt`}
+              inputMode="decimal"
+              enterKeyHint="done"
+              autoComplete="off"
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))}
+              aria-invalid={!!err("amount")}
+              className={cn(
+                "min-w-0 flex-1 rounded-md bg-transparent text-[48px] leading-none font-medium tracking-tight tabular-nums outline-none placeholder:text-muted-foreground/50 focus-visible:ring-3 focus-visible:ring-ring/15 aria-invalid:text-money-out",
+                direction === "in" && "text-money-in",
+              )}
+            />
+          </div>
+          <FieldError>{err("amount")}</FieldError>
+        </Field>
 
-        {/* Non-USD: rate + secondary value line [BINANCE-AMT][BREX-ADD] */}
-        {!isUsd ? (
-          <Group className="mt-4">
-            <Row label="FX to USD" htmlFor={`${id}-fx`}>
+        {/* Other currency: rate + secondary value line [BINANCE-AMT][BREX-ADD] */}
+        {!isBase ? (
+          <Card size="sm" className="mt-4 gap-0 py-0">
+            <Field orientation="horizontal" data-invalid={!!err("fx")} className={ROW}>
+              <FieldLabel htmlFor={`${id}-fx`} className={ROW_LABEL}>
+                1 {currency} =
+              </FieldLabel>
               <Input
                 id={`${id}-fx`}
                 inputMode="decimal"
                 autoComplete="off"
-                placeholder={`USD per 1 ${currency}`}
+                placeholder="Rate"
                 value={fx}
                 onChange={(e) => setFx(e.target.value.replace(/[^\d.,]/g, ""))}
-                aria-invalid={showErrors && !!errors.fx}
+                aria-invalid={!!err("fx")}
                 className={FIELD}
               />
-            </Row>
-          </Group>
+              <span className="text-muted-foreground text-sm">{base}</span>
+            </Field>
+          </Card>
         ) : null}
+        <FieldError className="mt-1 text-xs">{err("fx")}</FieldError>
         <p className="mt-2 h-4 text-xs text-muted-foreground tabular-nums">
-          {!isUsd && amountN > 0 && fxN > 0 ? `≈ ${formatMoney(round2(amountN * fxN))} USD` : null}
+          {!isBase && amountN > 0 && fxN > 0 ? `≈ ${formatMoney(round2(amountN * fxN), base)} ${base}` : null}
         </p>
 
         {/* Grouped rows [YNAB-ADD] */}
-        <Group className="mt-3">
-          <Row label="Description" htmlFor={`${id}-desc`}>
+        <Card size="sm" className="mt-3 gap-0 divide-y py-0">
+          <Field orientation="horizontal" data-invalid={!!err("description")} className={ROW}>
+            <FieldLabel htmlFor={`${id}-desc`} className={ROW_LABEL}>
+              Description
+            </FieldLabel>
             <Input
               id={`${id}-desc`}
               required
@@ -308,14 +323,17 @@ function EntryForm({
               placeholder="Figma, client payment…"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              aria-invalid={showErrors && !!errors.description}
+              aria-invalid={!!err("description")}
               className={FIELD}
             />
-          </Row>
+          </Field>
           {kind === "contractor" ? (
-            <Row label="Contractor">
+            <Field orientation="horizontal" className={ROW}>
+              <FieldLabel htmlFor={`${id}-contractor`} className={ROW_LABEL}>
+                Contractor
+              </FieldLabel>
               <Select value={contractorId} onValueChange={pickContractor} items={contractorItems}>
-                <SelectTrigger aria-label="Contractor" className={cn(FIELD, "w-full justify-end gap-2 border-0")}>
+                <SelectTrigger id={`${id}-contractor`} className={cn(FIELD, "w-full justify-end gap-2 border-0")}>
                   <SelectValue placeholder={contractors.length ? "Choose" : "None yet"} />
                 </SelectTrigger>
                 <SelectContent>
@@ -326,12 +344,15 @@ function EntryForm({
                   ))}
                 </SelectContent>
               </Select>
-            </Row>
+            </Field>
           ) : null}
           {clients ? (
-            <Row label="Client">
+            <Field orientation="horizontal" className={ROW}>
+              <FieldLabel htmlFor={`${id}-client`} className={ROW_LABEL}>
+                Client
+              </FieldLabel>
               <Select value={clientId} onValueChange={(v) => setClientId(v ?? "none")} items={clientItems}>
-                <SelectTrigger aria-label="Client" className={cn(FIELD, "w-full justify-end gap-2 border-0")}>
+                <SelectTrigger id={`${id}-client`} className={cn(FIELD, "w-full justify-end gap-2 border-0")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -342,9 +363,12 @@ function EntryForm({
                   ))}
                 </SelectContent>
               </Select>
-            </Row>
+            </Field>
           ) : null}
-          <Row label="Category" htmlFor={`${id}-cat`}>
+          <Field orientation="horizontal" className={ROW}>
+            <FieldLabel htmlFor={`${id}-cat`} className={ROW_LABEL}>
+              Category
+            </FieldLabel>
             <Input
               id={`${id}-cat`}
               list={`${id}-cats`}
@@ -359,8 +383,11 @@ function EntryForm({
                 <option key={c} value={c} />
               ))}
             </datalist>
-          </Row>
-          <Row label="Vendor" htmlFor={`${id}-vendor`}>
+          </Field>
+          <Field orientation="horizontal" className={ROW}>
+            <FieldLabel htmlFor={`${id}-vendor`} className={ROW_LABEL}>
+              Vendor
+            </FieldLabel>
             <Input
               id={`${id}-vendor`}
               maxLength={120}
@@ -369,19 +396,18 @@ function EntryForm({
               onChange={(e) => setVendor(e.target.value)}
               className={FIELD}
             />
-          </Row>
-          <Row label="Date" htmlFor={`${id}-date`}>
-            <Input
-              id={`${id}-date`}
-              type="date"
-              required
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className={FIELD}
-            />
-          </Row>
+          </Field>
+          <Field orientation="horizontal" className={ROW}>
+            <FieldLabel htmlFor={`${id}-date`} className={ROW_LABEL}>
+              Date
+            </FieldLabel>
+            <Input id={`${id}-date`} type="date" required value={date} onChange={(e) => setDate(e.target.value)} className={FIELD} />
+          </Field>
           {kind === "lifetime" ? (
-            <Row label="Replaces $/mo" htmlFor={`${id}-repl`}>
+            <Field orientation="horizontal" className={ROW}>
+              <FieldLabel htmlFor={`${id}-repl`} className={ROW_LABEL}>
+                Replaces a month
+              </FieldLabel>
               <Input
                 id={`${id}-repl`}
                 inputMode="decimal"
@@ -391,9 +417,13 @@ function EntryForm({
                 onChange={(e) => setReplaces(e.target.value.replace(/[^\d.,]/g, ""))}
                 className={FIELD}
               />
-            </Row>
+              <span className="text-muted-foreground text-sm">{base}</span>
+            </Field>
           ) : null}
-          <Row label="Notes" htmlFor={`${id}-notes`}>
+          <Field orientation="horizontal" className={ROW}>
+            <FieldLabel htmlFor={`${id}-notes`} className={ROW_LABEL}>
+              Notes
+            </FieldLabel>
             <Input
               id={`${id}-notes`}
               maxLength={2000}
@@ -402,14 +432,17 @@ function EntryForm({
               onChange={(e) => setNotes(e.target.value)}
               className={FIELD}
             />
-          </Row>
-        </Group>
+          </Field>
+        </Card>
+        <FieldError className="mt-1 text-xs">{err("description")}</FieldError>
 
         {kind === "subscription" ? (
           <p className="mt-3 text-xs text-muted-foreground">
             This logs a single charge. Recurring plans with renewal dates live under Plans, then Subscriptions.
           </p>
         ) : null}
+
+        <Receipts transactionId={t?.id} />
 
         {t ? (
           <AlertDialog>
@@ -439,7 +472,15 @@ function EntryForm({
       {/* Sticky CTA [GOPAY-ADD][CASH-AMT] */}
       <div className="shrink-0 border-t bg-popover p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <Button type="submit" disabled={pending} className="h-[52px] w-full rounded-md text-sm">
-          {pending ? "Saving…" : t ? "Save changes" : "Save"}
+          {pending ? (
+            <>
+              <Spinner /> Saving
+            </>
+          ) : t ? (
+            "Save changes"
+          ) : (
+            "Save"
+          )}
         </Button>
       </div>
     </form>
@@ -450,20 +491,8 @@ const CHIP =
   "h-9 rounded-sm border px-3 text-xs data-pressed:border-foreground data-pressed:bg-foreground data-pressed:text-background";
 const SEGMENT =
   "h-10 text-xs text-muted-foreground data-pressed:text-foreground";
+// Grouped rows [YNAB-ADD]: label left, borderless control right; the row tints while a control inside has focus.
+const ROW = "min-h-12 gap-3 px-3 focus-within:bg-muted/40";
+const ROW_LABEL = "label w-28 flex-none!";
 const FIELD =
-  "h-12 rounded-none border-0 bg-transparent px-0 text-right shadow-none focus-visible:ring-0 dark:bg-transparent aria-invalid:text-money-out aria-invalid:ring-0";
-
-function Group({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn("divide-y rounded-lg border bg-card", className)}>{children}</div>;
-}
-
-function Row({ label, htmlFor, children }: { label: string; htmlFor?: string; children: ReactNode }) {
-  return (
-    <div className="flex min-h-12 items-center gap-3 px-3 focus-within:bg-muted/40">
-      <label htmlFor={htmlFor} className="label w-28 shrink-0">
-        {label}
-      </label>
-      <div className="min-w-0 flex-1">{children}</div>
-    </div>
-  );
-}
+  "h-12 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-right shadow-none focus-visible:ring-0 dark:bg-transparent aria-invalid:text-money-out aria-invalid:ring-0";

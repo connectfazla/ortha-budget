@@ -16,3 +16,29 @@ Four sources, in this order of authority:
 4. **Mobbin**: search it (ToolSearch "+mobbin") for every screen or flow you build or change. Cite the app, screen and URL exactly as returned.
 
 Plus `docs/MOTION-SPEC.md` (Apple/Stripe motion and polish) and `docs/BUILD-NOTES.md` (stack and conventions).
+
+## 5. Use the UI library (shadcn/ui on Base UI) properly
+shadcn/ui is the component library. Its components live in `src/components/ui/`. Compose them; don't hand-roll equivalents. Style through their props, variants and `className`. Agent D's tokens are already inside them. Mapping:
+
+| need | use | not |
+|---|---|---|
+| any card / panel / section box | `Card` (+ `CardHeader`/`CardTitle`/`CardContent`/`CardFooter`) | a div with `bg-card rounded border` |
+| list row (title, meta, trailing amount, tap target) | `Item` (+ `ItemMedia`/`ItemContent`/`ItemTitle`/`ItemDescription`/`ItemActions`), `render={<button/>}` or `render={<Link/>}` when tappable | raw `<button>` or `<li>` styled by hand |
+| empty state | `Empty` (+ `EmptyHeader`/`EmptyMedia`/`EmptyTitle`/`EmptyDescription`/`EmptyContent`) | a dashed div |
+| form field | `Field` (+ `FieldLabel`/`FieldDescription`/`FieldError`/`FieldGroup`) with `Input`, `Textarea`, `InputGroup` | `Label` placed beside a control with no `htmlFor` |
+| choose one of many | `Select` for long or labelled lists; `NativeSelect` when the native mobile picker is better (currency, interval, dates-of-month) | raw `<select>` |
+| 2–4 exclusive options (segmented) | `ToggleGroup` (spacing 0, sliding thumb) or `Tabs` | `role="radiogroup"` buttons |
+| checkbox | `Checkbox` with a `FieldLabel` | `<input type="checkbox">` |
+| status / tag (Active, Paused, Trial ends…) | `Badge` (variants) | a styled `<span>` |
+| person / client initials | `Avatar` + `AvatarFallback` | a styled div |
+| icon-only button | `Button size="icon*"` with `aria-label`, wrapped in `Tooltip` on desktop | a bare `<button>` |
+| keyboard hints | `Kbd` / `KbdGroup` | `<span class="font-mono">⌘K</span>` |
+| pending | `Spinner` inside the `Button` | text-only "Saving…" |
+| horizontal chip rows | `ScrollArea` (horizontal) | `overflow-x-auto` divs |
+| dividers | `Separator` | `border-t` divs |
+| mobile bottom sheet | `Drawer`; desktop side panel: `Sheet` (`side="right"`) when it fits better | custom fixed panels |
+| confirm destructive | `AlertDialog` | `window.confirm` |
+| menus | `DropdownMenu` | custom popovers |
+| date picking | native `<input type="date">` inside `Input` styling is fine on mobile. Use `Calendar` + `Popover` only where a range picker helps (transactions date range) | — |
+
+Raw HTML elements are fine only where no component exists. Examples: the swipe-row gesture surface, landing-page marketing markup, or a big amount input styled as a display number. In those cases keep the focus ring and states consistent.

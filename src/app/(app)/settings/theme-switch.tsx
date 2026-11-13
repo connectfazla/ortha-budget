@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
-import { cn } from "@/lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 const OPTIONS = ["light", "dark", "system"] as const;
 
@@ -10,24 +10,20 @@ export function ThemeSwitch() {
   const { theme, setTheme } = useTheme();
   // The theme is only known in the browser; render nothing selected on the server to avoid a hydration mismatch.
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
-  const current = mounted ? theme : undefined;
+  const current = mounted && theme ? [theme] : [];
   return (
-    <div role="radiogroup" aria-label="Theme" className="bg-muted grid grid-cols-3 gap-1 rounded-md border p-1">
+    <ToggleGroup
+      aria-label="Theme"
+      value={current}
+      onValueChange={(v) => v[0] && setTheme(v[0] as string)}
+      spacing={0}
+      className="bg-muted grid w-full grid-cols-3 rounded-lg"
+    >
       {OPTIONS.map((o) => (
-        <button
-          key={o}
-          type="button"
-          role="radio"
-          aria-checked={current === o}
-          onClick={() => setTheme(o)}
-          className={cn(
-            "press h-10 rounded-sm text-sm font-medium capitalize transition-colors",
-            current === o ? "bg-card text-foreground border" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
+        <ToggleGroupItem key={o} value={o} className="text-muted-foreground data-pressed:text-foreground h-11 capitalize">
           {o}
-        </button>
+        </ToggleGroupItem>
       ))}
-    </div>
+    </ToggleGroup>
   );
 }

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shell/page-header";
 import { TransactionFilters, type Filters } from "@/components/transactions/transaction-filters";
 import { TransactionList } from "@/components/transactions/transaction-list";
-import { getCategories, getClients, getContractors, getTransactionTotals, getTransactions, requireUser } from "@/lib/data";
+import { getAttachmentCounts, getCategories, getClients, getContractors, getSettings, getTransactionTotals, getTransactions, requireUser } from "@/lib/data";
 import { KINDS, isMonthKey } from "@/lib/money";
 import type { TxnKind } from "@/lib/types";
 
@@ -34,12 +34,15 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   await requireUser();
   const [sp, clients] = await Promise.all([searchParams, getClients()]);
   const filters = parseFilters(sp, new Set(clients.map((c) => c.id)));
-  const [transactions, totals, contractors, categories] = await Promise.all([
+  const [transactions, totals, contractors, categories, receiptCounts, settings] = await Promise.all([
     getTransactions(filters),
     getTransactionTotals(filters),
     getContractors(),
     getCategories(),
+    getAttachmentCounts(),
+    getSettings(),
   ]);
+  const base = settings.base_currency;
   const activeClients = clients.filter((c) => !c.archived || c.id === filters.clientId);
 
   const { count, inUsd, outUsd } = totals;
@@ -59,14 +62,14 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       {/* [VIVID-TL] summary for the filtered set */}
       <p className="text-muted-foreground mb-3 flex gap-4 text-xs font-medium">
         <span>
-          In <Money value={inUsd} direction="in" className="ml-1 text-sm" />
+          In <Money value={inUsd} currency={base} direction="in" className="ml-1 text-sm" />
         </span>
         <span>
-          Out <Money value={outUsd} direction="out" className="text-foreground ml-1 text-sm" />
+          Out <Money value={outUsd} currency={base} direction="out" className="text-foreground ml-1 text-sm" />
         </span>
       </p>
 
-      <TransactionList transactions={transactions} contractors={contractors} categories={categories} clients={activeClients} filtered={filtered} />
+      <TransactionList transactions={transactions} contractors={contractors} categories={categories} clients={activeClients} filtered={filtered} receiptCounts={Object.fromEntries(receiptCounts)} baseCurrency={base} />
       {count > transactions.length && (
         <p className="text-muted-foreground mt-3 text-center text-xs">Showing {transactions.length} of {count}</p>
       )}

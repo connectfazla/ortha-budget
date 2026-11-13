@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { buildCalendar, type FeedRow } from "@/lib/ics";
 
 // Public on purpose (calendar apps fetch without a login). The secret token is the access control.
-// Plain anon client: no Clerk session here, and the calendar_feed RPC is the only thing anon may call.
+// Plain anon client: no user session here, and the calendar_feed RPC is the only thing anon may call.
 const HEADERS = {
   "Content-Type": "text/calendar; charset=utf-8",
   "Cache-Control": "private, max-age=900",

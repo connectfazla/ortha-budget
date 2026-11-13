@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, Home, ListOrdered, Plus, Repeat } from "lucide-react";
 import { AddEntryDrawer } from "@/components/entry/add-entry-drawer";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Client, Contractor } from "@/lib/types";
 
@@ -18,7 +19,17 @@ const TABS = [
 ];
 
 /** Mobile tab bar [YNAB-BUDGET]: 5 slots, raised square Add in the centre. Hidden on lg+. */
-export function BottomBar({ contractors, categories, clients }: { contractors: Contractor[]; categories: string[]; clients: Client[] }) {
+export function BottomBar({
+  contractors,
+  categories,
+  clients,
+  baseCurrency,
+}: {
+  contractors: Contractor[];
+  categories: string[];
+  clients: Client[];
+  baseCurrency: string;
+}) {
   const pathname = usePathname();
   return (
     <nav
@@ -32,7 +43,7 @@ export function BottomBar({ contractors, categories, clients }: { contractors: C
             href={t.href}
             aria-current={t.match(pathname) ? "page" : undefined}
             className={cn(
-              "relative flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium",
+              "press focus-visible:ring-ring/60 relative flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset",
               t.match(pathname) ? "text-foreground" : "text-muted-foreground",
             )}
           >
@@ -42,14 +53,11 @@ export function BottomBar({ contractors, categories, clients }: { contractors: C
           </Link>
         ) : (
           <div key="add" className="relative flex justify-center">
-            <AddEntryDrawer contractors={contractors} categories={categories} clients={clients}>
-              <button
-                type="button"
-                aria-label="Add transaction"
-                className="bg-primary text-primary-foreground focus-visible:ring-ring/50 absolute -top-4 grid size-14 place-items-center rounded-md border outline-none focus-visible:ring-3 active:translate-y-px"
-              >
+            <AddEntryDrawer contractors={contractors} categories={categories} clients={clients} baseCurrency={baseCurrency}>
+              {/* No tooltip: mobile only, and the label is the glyph everyone reads as "add". */}
+              <Button size="icon-lg" aria-label="Add transaction" className="absolute -top-4 size-14 rounded-md border">
                 <Plus className="size-6" aria-hidden />
-              </button>
+              </Button>
             </AddEntryDrawer>
           </div>
         ),

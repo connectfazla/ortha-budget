@@ -8,16 +8,22 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { CheckIcon, FileUpIcon } from "lucide-react";
+import { CheckIcon, FileUpIcon, TriangleAlertIcon } from "lucide-react";
 import { importTransactions } from "@/lib/actions";
 import { Money } from "@/components/money";
 import { Button } from "@/components/ui/button";
-import { buildRows, guessMapping, isOwnFormat, parseCsv, type Field, type Mapping } from "./csv";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty";
+import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { buildRows, guessMapping, isOwnFormat, parseCsv, type Field as CsvField, type Mapping } from "./csv";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const CHUNK = 2000;
 
-const FIELDS: { key: Field; label: string; required?: boolean }[] = [
+const FIELDS: { key: CsvField; label: string; required?: boolean }[] = [
   { key: "date", label: "Date", required: true },
   { key: "description", label: "Description", required: true },
   { key: "amount", label: "Amount", required: true },
@@ -29,7 +35,8 @@ const FIELDS: { key: Field; label: string; required?: boolean }[] = [
 type Parsed = { name: string; headers: string[]; data: string[][]; own: boolean };
 type Done = { count: number; skipped: number; error?: string };
 
-export function ImportFlow() {
+/** `baseCurrency`: the user's base currency (settings). Rows in it import without a rate. */
+export function ImportFlow({ baseCurrency: base = "USD" }: { baseCurrency?: string }) {
   const input = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<Parsed | null>(null);
   const [mapping, setMapping] = useState<Mapping | null>(null);
@@ -53,7 +60,7 @@ export function ImportFlow() {
     setSigned(m.direction < 0);
   }
 
-  const built = file && mapping ? buildRows(file.headers, file.data, { own: file.own, mapping, signed }) : null;
+  const built = file && mapping ? buildRows(file.headers, file.data, { own: file.own, mapping, signed, base }) : null;
   const ready = file && built && (file.own || (mapping!.date >= 0 && mapping!.description >= 0 && mapping!.amount >= 0));
 
   async function run() {
@@ -79,32 +86,40 @@ export function ImportFlow() {
 
   if (result) {
     return (
-      <div className="bg-card rounded-lg border p-6" role="status">
-        <div className="bg-money-in/10 text-money-in mb-3 grid size-10 place-items-center rounded-md">
-          <CheckIcon aria-hidden />
-        </div>
-        <h2 className="text-lg font-semibold">
-          {result.error ? `Imported ${result.count} before it stopped` : `Imported ${result.count} ${result.count === 1 ? "transaction" : "transactions"}`}
-        </h2>
-        {result.error ? <p className="text-destructive mt-1 text-sm">{result.error} Rows already imported stay saved, so do not re-run the whole file.</p> : null}
-        {result.skipped ? <p className="text-muted-foreground mt-1 text-sm">{result.skipped} rows skipped as invalid.</p> : null}
-        <div className="mt-5 flex gap-2">
-          <Button className="h-11 rounded-md" nativeButton={false} render={<Link href="/transactions" />}>
-            View transactions
-          </Button>
-          <Button
-            variant="outline"
-            className="h-11 rounded-md"
-            onClick={() => {
-              setResult(null);
-              setFile(null);
-              setMapping(null);
-            }}
+      <Card role="status">
+        <CardContent className="py-2">
+          <div
+            className={
+              result.error
+                ? "bg-destructive/10 text-destructive mb-3 grid size-10 place-items-center rounded-md"
+                : "bg-money-in/10 text-money-in mb-3 grid size-10 place-items-center rounded-md"
+            }
           >
-            Import another file
-          </Button>
-        </div>
-      </div>
+            {result.error ? <TriangleAlertIcon aria-hidden /> : <CheckIcon aria-hidden />}
+          </div>
+          <h2 className="text-lg font-semibold">
+            {result.error ? `Imported ${result.count} before it stopped` : `Imported ${result.count} ${result.count === 1 ? "transaction" : "transactions"}`}
+          </h2>
+          {result.error ? <p className="text-destructive mt-1 text-sm">{result.error} Rows already imported stay saved, so do not re-run the whole file.</p> : null}
+          {result.skipped ? <p className="text-muted-foreground mt-1 text-sm">{result.skipped} rows skipped as invalid.</p> : null}
+          <div className="mt-5 flex gap-2">
+            <Button className="h-11 rounded-md" nativeButton={false} render={<Link href="/transactions" />}>
+              View transactions
+            </Button>
+            <Button
+              variant="outline"
+              className="h-11 rounded-md"
+              onClick={() => {
+                setResult(null);
+                setFile(null);
+                setMapping(null);
+              }}
+            >
+              Import another file
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -129,6 +144,8 @@ export function ImportFlow() {
         {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}
         <p className="text-muted-foreground text-sm">
           A file exported from Ortha Budget imports as is. Any other file gets a column mapping step before anything is saved.
+          Amounts in {base} import as they are. Other currencies need an exchange rate, which only an Ortha Budget export
+          carries, so those rows are skipped.
         </p>
       </div>
     );
@@ -149,35 +166,40 @@ export function ImportFlow() {
       ) : (
         <section aria-labelledby="map-h" className="space-y-3">
           <h2 id="map-h" className="text-sm font-medium">Match your columns</h2>
-          <div className="bg-card divide-y rounded-lg border">
+          <Card className="gap-0 divide-y py-0">
             {FIELDS.map((f) => (
-              <label key={f.key} className="grid min-h-14 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-3 px-4 py-2">
-                <span className="text-sm">
-                  {f.label}
-                  {f.required ? <span className="text-muted-foreground block text-xs">Required</span> : null}
-                </span>
-                <select
+              <Field key={f.key} orientation="horizontal" className="grid min-h-14 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 px-4 py-2">
+                <FieldContent>
+                  <FieldLabel htmlFor={`map-${f.key}`} className="font-normal">
+                    {f.label}
+                  </FieldLabel>
+                  {f.required ? <FieldDescription className="text-xs">Required</FieldDescription> : null}
+                </FieldContent>
+                <NativeSelect
+                  id={`map-${f.key}`}
                   value={mapping[f.key]}
                   onChange={(e) => setMapping({ ...mapping, [f.key]: Number(e.target.value) })}
-                  className="bg-background focus-visible:ring-ring/50 h-11 w-full min-w-0 rounded-md border px-2 text-sm outline-none focus-visible:ring-3"
+                  className="w-full min-w-0 *:data-[slot=native-select]:h-11"
                 >
-                  <option value={-1}>{f.required ? "Choose a column" : "Do not import"}</option>
+                  <NativeSelectOption value={-1}>{f.required ? "Choose a column" : "Do not import"}</NativeSelectOption>
                   {file.headers.map((h, i) => (
-                    <option key={i} value={i}>
+                    <NativeSelectOption key={i} value={i}>
                       {h || `Column ${i + 1}`}
-                    </option>
+                    </NativeSelectOption>
                   ))}
-                </select>
-              </label>
+                </NativeSelect>
+              </Field>
             ))}
-          </div>
+          </Card>
           {mapping.direction < 0 ? (
             <p className="text-muted-foreground text-sm">With no direction column, negative amounts count as money out and positive as money in.</p>
           ) : (
-            <label className="flex min-h-11 items-center gap-2 text-sm">
-              <input type="checkbox" checked={signed} onChange={(e) => setSigned(e.target.checked)} className="size-4" />
-              Use the sign of the amount instead of the direction column
-            </label>
+            <Field orientation="horizontal" className="min-h-11">
+              <Checkbox id="import-signed" checked={signed} onCheckedChange={(v) => setSigned(v === true)} />
+              <FieldLabel htmlFor="import-signed" className="font-normal">
+                Use the sign of the amount instead of the direction column
+              </FieldLabel>
+            </Field>
           )}
         </section>
       )}
@@ -187,20 +209,32 @@ export function ImportFlow() {
           Preview <span className="text-muted-foreground font-normal">first {Math.min(10, built.rows.length)} of {built.rows.length} valid rows</span>
         </h2>
         {built.rows.length ? (
-          <ul className="bg-card divide-y rounded-lg border">
-            {built.rows.slice(0, 10).map((r, i) => (
-              <li key={i} className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2">
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">{r.description}</span>
-                  <span className="text-muted-foreground block truncate text-xs tabular-nums">{r.date}</span>
-                  <span className="text-muted-foreground block truncate text-xs">{r.category}</span>
-                </span>
-                <Money value={r.amount} currency={r.currency} direction={r.direction} className="text-sm font-medium" />
-              </li>
-            ))}
-          </ul>
+          <Card className="gap-0 py-0">
+            <ul className="divide-y">
+              {built.rows.slice(0, 10).map((r, i) => (
+                <li key={i}>
+                  <Item className="min-h-14 flex-nowrap rounded-none border-0 px-4 py-2">
+                    <ItemContent className="min-w-0 gap-0">
+                      <ItemTitle className="w-full">
+                        <span className="truncate">{r.description}</span>
+                      </ItemTitle>
+                      <ItemDescription className="truncate text-xs tabular-nums">{r.date}</ItemDescription>
+                      <ItemDescription className="truncate text-xs">{r.category}</ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <Money value={r.amount} currency={r.currency} direction={r.direction} className="text-sm font-medium" />
+                    </ItemActions>
+                  </Item>
+                </li>
+              ))}
+            </ul>
+          </Card>
         ) : (
-          <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">No valid rows with this mapping.</p>
+          <Empty className="border p-4">
+            <EmptyHeader>
+              <EmptyDescription>No valid rows with this mapping. Check the date, description and amount columns.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
         {built.skipped.length ? (
           <details className="text-sm">

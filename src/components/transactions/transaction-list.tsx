@@ -11,7 +11,9 @@ import { toast } from "sonner";
 import {
   ArrowDownLeftIcon,
   InfinityIcon,
+  ListIcon,
   MoreHorizontalIcon,
+  PaperclipIcon,
   PlusIcon,
   ReceiptIcon,
   RepeatIcon,
@@ -22,8 +24,13 @@ import {
 } from "lucide-react";
 import { AddEntryDrawer } from "@/components/entry/add-entry-drawer";
 import { Money } from "@/components/money";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { deleteTransaction, restoreTransaction } from "@/lib/actions";
 import { KINDS, formatMoney } from "@/lib/money";
 import type { Client, Contractor, Transaction, TxnKind } from "@/lib/types";
@@ -55,12 +62,18 @@ export function TransactionList({
   categories,
   clients,
   filtered,
+  receiptCounts,
+  baseCurrency: base = "USD",
 }: {
   transactions: Transaction[];
   contractors: Contractor[];
   categories: string[];
   clients?: Client[];
   filtered: boolean;
+  /** Transaction id to receipt count; rows with a count show a paperclip. */
+  receiptCounts?: Record<string, number>;
+  /** The user's base currency (settings); amount_base is in it. */
+  baseCurrency?: string;
 }) {
   // Rows deleted (hidden at once) or on their way out (fading for ~140ms before they are hidden).
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
@@ -122,7 +135,7 @@ export function TransactionList({
           contractor_id: t.contractor_id,
           client_id: t.client_id,
           recurring_id: t.recurring_id,
-          replaces_monthly_usd: t.replaces_monthly_usd,
+          replaces_monthly: t.replaces_monthly,
           notes: t.notes,
         });
         if (r.ok) setHidden((s) => flip(s, t.id, false));
@@ -135,9 +148,17 @@ export function TransactionList({
 
   if (visible.length === 0) {
     return (
-      <div className="text-muted-foreground flex flex-col items-center gap-3 rounded-lg border border-dashed p-8 text-center text-sm">
-        <p>{filtered ? "Nothing matches these filters." : "No transactions yet. Log your first income or expense, or import a CSV."}</p>
-        <div className="flex flex-wrap justify-center gap-2">
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <ListIcon />
+          </EmptyMedia>
+          <EmptyTitle>{filtered ? "Nothing matches these filters" : "No transactions yet"}</EmptyTitle>
+          <EmptyDescription>
+            {filtered ? "Clear the filters or try another search." : "Log your first income or expense, or import a CSV."}
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent className="flex-row flex-wrap justify-center gap-2">
           {filtered ? (
             <Button variant="outline" className="h-11 rounded-md" nativeButton={false} render={<Link href="/transactions" />}>
               Clear filters
@@ -147,13 +168,13 @@ export function TransactionList({
               Import CSV
             </Button>
           )}
-          <AddEntryDrawer contractors={contractors} categories={categories} clients={clients}>
+          <AddEntryDrawer contractors={contractors} categories={categories} clients={clients} baseCurrency={base}>
             <Button className="h-11 rounded-md">
               <PlusIcon /> Add entry
             </Button>
           </AddEntryDrawer>
-        </div>
-      </div>
+        </EmptyContent>
+      </Empty>
     );
   }
 
@@ -163,12 +184,12 @@ export function TransactionList({
     let g = groups.at(-1);
     if (!g || g.date !== t.date) groups.push((g = { date: t.date, net: 0, rows: [] }));
     g.rows.push(t);
-    g.net += t.direction === "in" ? t.amount_usd : -t.amount_usd;
+    g.net += t.direction === "in" ? t.amount_base : -t.amount_base;
   }
 
   return (
     // ponytail: one Drawer root per row; fine at the 500-row query cap, switch to one shared drawer if lists get longer.
-    <div className="bg-card divide-y rounded-lg border">
+    <Card className="gap-0 divide-y py-0">
       <div className={`hidden gap-3 px-4 py-2 lg:grid ${COLS} ${LABEL}`}>
         <span>Date</span>
         <span>Description</span>
@@ -181,7 +202,7 @@ export function TransactionList({
         <section key={g.date} aria-label={fmtDate(g.date, { weekday: "long", month: "long", day: "numeric" })} className="divide-y">
           <h2 className={`bg-muted/50 flex items-center justify-between px-4 py-2 lg:hidden ${LABEL}`}>
             <span>{fmtDate(g.date, { weekday: "short", month: "short", day: "numeric" })}</span>
-            <Money value={Math.abs(g.net)} direction={g.net >= 0 ? "in" : "out"} className="text-xs" />
+            <Money value={Math.abs(g.net)} currency={base} direction={g.net >= 0 ? "in" : "out"} className="text-xs" />
           </h2>
           {g.rows.map((t) => {
             const Icon = ICONS[t.kind];
@@ -194,47 +215,67 @@ export function TransactionList({
               >
                 <SwipeRow label={t.description} onDelete={() => remove(t)}>
                   <div className="hover:bg-muted/50 focus-within:bg-muted/50 relative">
-                    <AddEntryDrawer contractors={contractors} categories={categories} clients={clients} transaction={t}>
-                      <button
-                        type="button"
-                        aria-label={`Edit ${t.description}`}
-                        className={`grid min-h-16 w-full grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 text-left outline-none focus-visible:ring-3 focus-visible:ring-inset lg:min-h-12 lg:py-2 ${COLS}`}
+                    <AddEntryDrawer contractors={contractors} categories={categories} clients={clients} transaction={t} baseCurrency={base}>
+                      <Item
+                        render={<button type="button" aria-label={`Edit ${t.description}`} />}
+                        className={`grid min-h-16 grid-cols-[40px_minmax(0,1fr)_auto] gap-3 rounded-none border-0 px-4 py-2.5 text-left focus-visible:ring-inset lg:min-h-12 lg:py-2 ${COLS}`}
                       >
                         <span className="text-muted-foreground hidden text-sm tabular-nums lg:block">
                           {fmtDate(t.date, { month: "short", day: "numeric" })}
                         </span>
-                        <span className="bg-muted grid size-10 place-items-center rounded-md border lg:hidden">
-                          <Icon className="size-4" aria-hidden />
+                        <ItemMedia variant="icon" className="bg-muted size-10 rounded-md border lg:hidden">
+                          <Icon aria-hidden />
                           <span className="sr-only">{KINDS[t.kind].label}</span>
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-[15px] font-medium lg:text-sm">{t.description}</span>
-                          <span className="text-muted-foreground block truncate text-xs lg:hidden">{t.vendor ?? t.category}</span>
-                          {t.vendor ? <span className="text-muted-foreground hidden truncate text-xs lg:block">{t.vendor}</span> : null}
-                        </span>
+                        </ItemMedia>
+                        <ItemContent className="min-w-0 gap-0">
+                          <ItemTitle className="w-full gap-1.5 text-[15px] lg:text-sm">
+                            <span className="truncate">{t.description}</span>
+                            {receiptCounts?.[t.id] ? (
+                              <>
+                                <PaperclipIcon className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+                                <span className="sr-only">{receiptCounts[t.id]} {receiptCounts[t.id] === 1 ? "receipt" : "receipts"}</span>
+                              </>
+                            ) : null}
+                          </ItemTitle>
+                          <ItemDescription className="truncate text-xs lg:hidden">{t.vendor ?? t.category}</ItemDescription>
+                          {t.vendor ? <ItemDescription className="hidden truncate text-xs lg:block">{t.vendor}</ItemDescription> : null}
+                        </ItemContent>
                         <span className="text-muted-foreground hidden truncate text-sm lg:block">{t.category}</span>
                         <span className="hidden lg:block">
-                          <span className="inline-flex h-6 items-center gap-1.5 rounded-sm border px-1.5 text-xs">
-                            <Icon className="size-3" aria-hidden />
+                          <Badge variant="outline">
+                            <Icon data-icon="inline-start" aria-hidden />
                             {KINDS[t.kind].label}
-                          </span>
+                          </Badge>
                         </span>
-                        <span className="text-right">
-                          <Money value={t.amount_usd} direction={t.direction} className="block text-[15px] font-medium lg:text-sm" />
-                          {t.currency !== "USD" ? (
+                        <ItemActions className="flex-col items-end gap-0 text-right">
+                          <Money value={t.amount_base} currency={base} direction={t.direction} className="block text-[15px] font-medium lg:text-sm" />
+                          {t.currency !== base ? (
                             <span className="text-muted-foreground block text-xs tabular-nums">{formatMoney(t.amount, t.currency)}</span>
                           ) : null}
-                        </span>
-                      </button>
+                        </ItemActions>
+                      </Item>
                     </AddEntryDrawer>
                     {/* Keyboard and desktop route to delete. On touch the swipe covers it, so it only shows on focus there. */}
                     <DropdownMenu>
-                      <DropdownMenuTrigger
-                        aria-label={`Actions for ${t.description}`}
-                        className="focus-visible:ring-ring/60 hover:bg-muted absolute top-1/2 right-2 grid size-10 -translate-y-1/2 place-items-center rounded-md outline-none focus-visible:ring-3 max-lg:sr-only max-lg:focus-visible:not-sr-only max-lg:focus-visible:bg-card max-lg:focus-visible:border"
-                      >
-                        <MoreHorizontalIcon className="size-4" aria-hidden />
-                      </DropdownMenuTrigger>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <DropdownMenuTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-lg"
+                                  aria-label={`Actions for ${t.description}`}
+                                  className="absolute top-1/2 right-2 size-10 -translate-y-1/2 max-lg:sr-only max-lg:focus-visible:not-sr-only max-lg:focus-visible:border max-lg:focus-visible:bg-card"
+                                />
+                              }
+                            />
+                          }
+                        >
+                          <MoreHorizontalIcon aria-hidden />
+                        </TooltipTrigger>
+                        <TooltipContent>Actions</TooltipContent>
+                      </Tooltip>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem variant="destructive" onClick={() => remove(t)}>
                           <Trash2Icon /> Delete
@@ -248,6 +289,6 @@ export function TransactionList({
           })}
         </section>
       ))}
-    </div>
+    </Card>
   );
 }

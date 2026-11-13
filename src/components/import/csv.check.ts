@@ -35,4 +35,9 @@ assert.deepEqual([m.date, m.description, m.amount], [0, 1, 2]);
 const b = buildRows(f[0], f.slice(1), { own: false, mapping: m, signed: true });
 assert.deepEqual(b.rows.map((r) => [r.direction, r.amount]), [["out", 15], ["in", 1200]]);
 assert.equal(b.skipped.length, 2);
+// base currency: base rows need no rate, a mapped foreign row is skipped, and a missing currency means base
+const e = parseCsv("Date,Payee,Amount,Currency\n2026-02-01,Rent,-900,EUR\n2026-02-02,Figma,-15,USD\n2026-02-03,Tea,-3,");
+const eb = buildRows(e[0], e.slice(1), { own: false, mapping: guessMapping(e[0]), signed: true, base: "EUR" });
+assert.deepEqual(eb.rows.map((r) => [r.currency, r.fx_rate]), [["EUR", 1], ["EUR", 1]]);
+assert.deepEqual(eb.skipped, [{ line: 3, reason: "USD has no rate to EUR" }]);
 console.log("csv ok");

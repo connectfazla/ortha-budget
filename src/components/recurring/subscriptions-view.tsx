@@ -1,25 +1,31 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, RepeatIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Money } from "@/components/money";
 import { undoToast } from "@/components/motion/undo-toast";
 import { PageHeader } from "@/components/shell/page-header";
 import { NewRecurringButton } from "@/components/recurring/new-recurring-button";
 import { RecurringDrawer } from "@/components/recurring/recurring-drawer";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { deleteRecurring, markRecurringPaid, restoreRecurring, setRecurringStatus } from "@/lib/actions";
 import { INTERVALS, formatMoney, monthlyEquivalent } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import type { Client, Contractor, Direction, Recurring, RecurringStatus } from "@/lib/types";
+import type { Client, Contractor, Direction, PriceChange, Recurring, RecurringStatus } from "@/lib/types";
 
 const MS = 86_400_000;
 const day = (s: string) => Date.parse(`${s}T00:00:00Z`);
 const fmtDate = (s: string) => new Date(day(s)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const TRIAL_WINDOW = 14;
+const PRICE_WINDOW = 90;
 
 export function SubscriptionsView({
   items,
@@ -27,12 +33,17 @@ export function SubscriptionsView({
   clients,
   categories,
   today,
+  priceChanges = [],
+  baseCurrency: base = "USD",
 }: {
   items: Recurring[];
   contractors: Contractor[];
   clients: Client[];
   categories: string[];
   today: string;
+  priceChanges?: PriceChange[];
+  /** The user's base currency (settings); every *_base amount is in it. */
+  baseCurrency?: string;
 }) {
   const [tab, setTab] = useState<Direction>("out");
   const [period, setPeriod] = useState<"month" | "year">("month");
@@ -47,11 +58,20 @@ export function SubscriptionsView({
     return () => clearTimeout(t);
   }, [paidId]);
 
+  const history = new Map<string, PriceChange[]>();
+  for (const c of priceChanges) history.set(c.recurring_id, [...(history.get(c.recurring_id) ?? []), c]);
+  /** Latest change, if it is an increase inside the window. */
+  const raise = (i: Recurring) => {
+    const c = history.get(i.id)?.[0];
+    if (!c || c.new_amount <= c.old_amount || (day(today) - day(c.changed_on.slice(0, 10))) / MS > PRICE_WINDOW) return null;
+    return `Price up ${Math.round(((c.new_amount - c.old_amount) / c.old_amount) * 100)}% on ${fmtDate(c.changed_on.slice(0, 10))}`;
+  };
+
   const clientName = new Map(clients.map((c) => [c.id, c.name]));
   const visible = items.filter((i) => !hidden.has(i.id));
   const active = visible.filter((i) => i.status === "active");
   const mult = period === "year" ? 12 : 1;
-  const sum = (d: Direction) => active.filter((i) => i.direction === d).reduce((s, i) => s + monthlyEquivalent(i.amount_usd, i.billing_interval), 0) * mult;
+  const sum = (d: Direction) => active.filter((i) => i.direction === d).reduce((s, i) => s + monthlyEquivalent(i.amount_base, i.billing_interval), 0) * mult;
   const count = (d: Direction) => visible.filter((i) => i.direction === d).length;
 
   const list = visible.filter((i) => i.direction === tab);
@@ -59,9 +79,13 @@ export function SubscriptionsView({
   const trialIn = (i: Recurring) => (i.trial_ends ? Math.round((day(i.trial_ends) - day(today)) / MS) : null);
   const act = (i: Recurring) => i.status === "active";
   const trialSoon = (i: Recurring) => act(i) && trialIn(i) !== null && trialIn(i)! >= 0 && trialIn(i)! <= TRIAL_WINDOW;
-  const rest = list.filter((i) => !trialSoon(i));
+  const cancelIn = (i: Recurring) => (i.cancel_by ? Math.round((day(i.cancel_by) - day(today)) / MS) : null);
+  const cancelSoon = (i: Recurring) => act(i) && cancelIn(i) !== null && cancelIn(i)! >= 0 && cancelIn(i)! <= TRIAL_WINDOW;
+  const top = (i: Recurring) => trialSoon(i) || cancelSoon(i);
+  const rest = list.filter((i) => !top(i));
   const groups = [
     { key: "trial", label: `Trials ending in ${TRIAL_WINDOW} days`, rows: list.filter(trialSoon).sort((a, b) => trialIn(a)! - trialIn(b)!) },
+    { key: "cancel", label: `Cancel by in ${TRIAL_WINDOW} days`, rows: list.filter((i) => cancelSoon(i) && !trialSoon(i)).sort((a, b) => cancelIn(a)! - cancelIn(b)!) },
     { key: "overdue", label: "Overdue", rows: rest.filter((i) => act(i) && dueIn(i) < 0) },
     { key: "soon", label: "Due in 7 days", rows: rest.filter((i) => act(i) && dueIn(i) >= 0 && dueIn(i) <= 7) },
     { key: "later", label: "Later", rows: rest.filter((i) => act(i) && dueIn(i) > 7) },
@@ -107,7 +131,7 @@ export function SubscriptionsView({
     });
   };
 
-  const newProps = { contractors, categories, clients, today };
+  const newProps = { contractors, categories, clients, today, baseCurrency: base };
 
   return (
     <>
@@ -121,11 +145,11 @@ export function SubscriptionsView({
           </TabsList>
         </Tabs>
       </div>
-      <div className="shadow-card grid grid-cols-3 divide-x rounded-lg border">
-        <Stat label={period === "year" ? "Burn per year" : "Burn per month"}><Money animate value={sum("out")} direction="out" hideCents={period === "year"} /></Stat>
-        <Stat label={period === "year" ? "Retainers per year" : "Retainers per month"}><Money animate value={sum("in")} direction="in" hideCents={period === "year"} /></Stat>
+      <Card className="grid grid-cols-3 gap-0 divide-x py-0">
+        <Stat label={period === "year" ? "Burn per year" : "Burn per month"}><Money animate value={sum("out")} currency={base} direction="out" hideCents={period === "year"} /></Stat>
+        <Stat label={period === "year" ? "Retainers per year" : "Retainers per month"}><Money animate value={sum("in")} currency={base} direction="in" hideCents={period === "year"} /></Stat>
         <Stat label="Active plans"><span className="tabular-nums">{active.length}</span></Stat>
-      </div>
+      </Card>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as Direction)} className="mt-4">
         <TabsList className="h-10 w-full">
@@ -135,12 +159,22 @@ export function SubscriptionsView({
       </Tabs>
 
       {groups.length === 0 ? (
-        <div className="text-muted-foreground mt-4 flex flex-col items-center gap-3 rounded-lg border border-dashed p-8 text-center text-sm">
-          {tab === "out" ? "No subscriptions or contractor pay yet." : "No client retainers yet."}
-          <NewRecurringButton variant="outline" {...newProps}>
-            Add {tab === "out" ? "subscription" : "retainer"}
-          </NewRecurringButton>
-        </div>
+        <Empty className="mt-4 border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <RepeatIcon />
+            </EmptyMedia>
+            <EmptyTitle>{tab === "out" ? "No subscriptions or contractor pay yet" : "No client retainers yet"}</EmptyTitle>
+            <EmptyDescription>
+              {tab === "out" ? "Add a plan to see its renewal dates and monthly burn." : "Add a retainer to see what comes in each month."}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <NewRecurringButton variant="outline" className="h-11" {...newProps}>
+              Add {tab === "out" ? "subscription" : "retainer"}
+            </NewRecurringButton>
+          </EmptyContent>
+        </Empty>
       ) : (
         groups.map((g) => (
           <section key={g.key} className="mt-5">
@@ -148,49 +182,65 @@ export function SubscriptionsView({
               <span>{g.label}</span>
               <span className="tabular-nums">{g.rows.length}</span>
             </h2>
-            <ul className={cn("divide-y rounded-lg border", g.key === "off" && "opacity-60")}>
+            <Card className={cn("gap-0 py-0", g.key === "off" && "opacity-60")}>
+            <ul className="divide-y">
               {g.rows.map((i) => {
                 const d = dueIn(i);
                 const t = trialIn(i);
-                const needsPay = act(i) && d <= 7 && !trialSoon(i);
+                const needsPay = act(i) && d <= 7 && !top(i);
+                const up = raise(i);
+                const cb = act(i) && i.cancel_by && cancelIn(i)! >= 0 ? i.cancel_by : null;
                 const client = i.client_id ? clientName.get(i.client_id) : undefined;
                 return (
                   <li key={i.id} className="px-3 py-2.5">
                     <div className="flex items-center gap-1">
-                      <button type="button" onClick={() => open(i)} className="press focus-visible:ring-ring/50 focus-visible:ring-2 outline-none flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left">
-                        <span aria-hidden className="bg-muted flex size-9 shrink-0 items-center justify-center rounded-md border text-sm font-medium">
+                      <Item
+                        size="sm"
+                        render={<button type="button" onClick={() => open(i)} />}
+                        className="press min-h-11 min-w-0 flex-1 flex-nowrap gap-3 rounded-md border-0 p-0 text-left"
+                      >
+                        <ItemMedia className="bg-muted size-9 rounded-md border text-sm font-medium" aria-hidden>
                           {i.name.slice(0, 1).toUpperCase()}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium">{i.name}</span>
-                          <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-3 text-xs">
+                        </ItemMedia>
+                        <ItemContent className="min-w-0 gap-0.5">
+                          <ItemTitle className="w-full">
+                            <span className="truncate">{i.name}</span>
+                          </ItemTitle>
+                          <ItemDescription className="flex flex-wrap items-center gap-x-3 text-xs">
                             <span>{INTERVALS[i.billing_interval].label}</span>
                             <span>Due {fmtDate(i.next_due)}</span>
                             {client && <span className="truncate">{client}</span>}
-                          </span>
-                          {(t !== null && act(i) && t >= 0) || g.key === "overdue" || g.key === "soon" || !act(i) ? (
+                          </ItemDescription>
+                          {(t !== null && act(i) && t >= 0) || cb || up || g.key === "overdue" || g.key === "soon" || !act(i) ? (
                             <span className="mt-1 flex flex-wrap gap-1.5">
                               {t !== null && act(i) && t >= 0 && <Tag tone="warn">{`Trial ends ${fmtDate(i.trial_ends!)}`}</Tag>}
+                              {cb && <Tag tone="warn">{`Cancel by ${fmtDate(cb)}`}</Tag>}
+                              {up && <Tag tone="out">{up}</Tag>}
                               {g.key === "overdue" && <Tag tone="out">Overdue</Tag>}
                               {g.key === "soon" && <Tag tone="warn">{d === 0 ? "Due today" : `Due in ${d} days`}</Tag>}
                               {!act(i) && <Tag>{i.status === "paused" ? "Paused" : "Cancelled"}</Tag>}
                             </span>
                           ) : null}
-                        </span>
-                        <span className="shrink-0 text-right text-sm">
-                          <Money value={i.amount_usd} direction={i.direction} />
-                          {(i.billing_interval !== "monthly" || i.currency !== "USD") && (
-                            <span className="text-muted-foreground block text-xs">
-                              {i.currency !== "USD" && <span className="block">{formatMoney(i.amount, i.currency)}</span>}
-                              {i.billing_interval !== "monthly" && <span className="block">{formatMoney(monthlyEquivalent(i.amount_usd, i.billing_interval), "USD")} a month</span>}
+                        </ItemContent>
+                        <ItemActions className="shrink-0 flex-col items-end gap-0 text-right text-sm">
+                          <Money value={i.amount_base} currency={base} direction={i.direction} />
+                          {i.currency !== base && <span className="text-muted-foreground block text-xs tabular-nums">{formatMoney(i.amount, i.currency)}</span>}
+                          {i.billing_interval !== "monthly" && (
+                            <span className="text-muted-foreground block text-xs tabular-nums">
+                              {formatMoney(monthlyEquivalent(i.amount_base, i.billing_interval), base)} a month
                             </span>
                           )}
-                        </span>
-                      </button>
+                        </ItemActions>
+                      </Item>
                       <DropdownMenu>
-                        <DropdownMenuTrigger render={<Button variant="ghost" size="icon-lg" aria-label={`Actions for ${i.name}`} />}>
-                          <MoreVertical />
-                        </DropdownMenuTrigger>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={<DropdownMenuTrigger render={<Button variant="ghost" size="icon-lg" aria-label={`Actions for ${i.name}`} />} />}
+                          >
+                            <MoreVertical />
+                          </TooltipTrigger>
+                          <TooltipContent>Actions</TooltipContent>
+                        </Tooltip>
                         <DropdownMenuContent align="end">
                           {act(i) && <DropdownMenuItem disabled={pending} onClick={() => markPaid(i)}>Mark paid</DropdownMenuItem>}
                           <DropdownMenuItem disabled={pending} onClick={() => open(i)}>Edit</DropdownMenuItem>
@@ -211,7 +261,7 @@ export function SubscriptionsView({
                       <PaidCheck />
                     ) : (
                       needsPay && (
-                        <Button variant="outline" size="sm" className="press mt-1 ml-12 h-9" disabled={pending} onClick={() => markPaid(i)}>
+                        <Button variant="outline" size="sm" className="mt-1 ml-12 h-9" disabled={pending} onClick={() => markPaid(i)}>
                           Mark paid
                         </Button>
                       )
@@ -220,6 +270,7 @@ export function SubscriptionsView({
                 );
               })}
             </ul>
+            </Card>
           </section>
         ))
       )}
@@ -232,6 +283,8 @@ export function SubscriptionsView({
         clients={clients.filter((c) => !c.archived)}
         categories={categories}
         today={today}
+        priceChanges={drawer.item ? history.get(drawer.item.id) : undefined}
+        baseCurrency={base}
       />
     </>
   );
@@ -279,16 +332,11 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
+/** Status tag: soft tint of the tone's hue, full-strength text (spec § 4, Stripe pills). */
 function Tag({ tone, children }: { tone?: "out" | "warn"; children: React.ReactNode }) {
   return (
-    <span
-      className={cn(
-        "rounded-sm border px-1.5 py-px text-xs leading-4",
-        tone === "out" && "text-money-out border-current",
-        tone === "warn" && "text-warn border-current",
-      )}
-    >
+    <Badge variant={tone === "out" ? "destructive" : "secondary"} className={cn(tone === "warn" && "bg-warn/10 text-warn")}>
       {children}
-    </span>
+    </Badge>
   );
 }

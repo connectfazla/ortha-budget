@@ -1,6 +1,6 @@
 # Build notes for agents (read fully before coding)
 
-App: Ortha Budget. A mobile-first budget tracker for agencies/freelancers. Next.js 16.4 (App Router, `src/`), React 19.3, Tailwind v4, shadcn v4 on **Base UI** (not Radix), **Clerk** auth (`@clerk/nextjs` v7), Supabase Postgres with RLS keyed on the Clerk user id. Open-source repo: never put personal data, real names, keys or emails in code, comments or fixtures.
+App: Ortha Budget. A mobile-first budget tracker for agencies/freelancers. Next.js 16.4 (App Router, `src/`), React 19.3, Tailwind v4, shadcn v4 on **Base UI** (not Radix), **Supabase Auth** (email + password, cookie session via `@supabase/ssr`), Supabase Postgres with RLS keyed on `auth.jwt() ->> 'sub'` (the Supabase user id). Open-source repo: never put personal data, real names, keys or emails in code, comments or fixtures.
 
 ## Must-read
 - `docs/DESIGN-BRIEF.md`: the Mobbin-grounded layout per screen. Its OVERRIDE section is **superseded by v2 below**.
@@ -15,7 +15,7 @@ App: Ortha Budget. A mobile-first budget tracker for agencies/freelancers. Next.
 - Feel: soft layered shadows plus hairline borders on cards; press feedback on every tappable element; numbers roll up; sheets use the iOS curve; lists animate insert/remove; optimistic UI with undo toasts; respect `prefers-reduced-motion`.
 
 ## Conventions
-- Pages are async Server Components. Call `await requireUser()` first (returns the Clerk user id), fetch with `src/lib/data.ts`, and pass plain data to client components. Mutations call server actions from client components via `useTransition`, then `toast.success`/`toast.error`. Deletes: optimistic hide, then a toast with **Undo** that calls `restoreTransaction`/`restoreRecurring` with the kept row (sonner, `import { toast } from "sonner"`). Actions already call `revalidatePath`.
+- Pages are async Server Components. Call `await requireUser()` first (returns the Supabase user id), fetch with `src/lib/data.ts`, and pass plain data to client components. Mutations call server actions from client components via `useTransition`, then `toast.success`/`toast.error`. Deletes: optimistic hide, then a toast with **Undo** that calls `restoreTransaction`/`restoreRecurring` with the kept row (sonner, `import { toast } from "sonner"`). Actions already call `revalidatePath`.
 - Base UI API: there is no `asChild`. Use the `render` prop, e.g. `<Button render={<Link href="/x" />}>Go</Button>` and `<DrawerTrigger render={children} />`. Read the component file in `src/components/ui/` before using it.
 - Mobile-first at 390px with a 16px gutter. Desktop from `lg:` (1024px). Drawers: `src/components/ui/drawer.tsx` (Base UI Drawer, swipe down) on mobile. On desktop either the same drawer or `Sheet side="right"`. Keep it simple: the same Drawer on both is fine.
 - Use the shared components: `<Money value currency direction />` (`src/components/money.tsx`), `<PageHeader title subtitle actions />` (`src/components/shell/page-header.tsx`), `<PlansNav />` (`src/components/shell/plans-nav.tsx`) at the top of /subscriptions, /lifetime and /contractors. Use `<AddEntryDrawer contractors categories defaultKind? transaction?>{trigger}</AddEntryDrawer>` (`src/components/entry/add-entry-drawer.tsx`) for creating or editing any transaction, including lifetime deals and contractor payouts.
@@ -33,14 +33,24 @@ Desktop sidebar: Home, Transactions, Subscriptions, Lifetime deals, Contractors,
 All app pages live in `src/app/(app)/…`. `src/app/(app)/layout.tsx` (the shell) wraps them. `/login` sits outside the group.
 
 ## Data APIs added in wave 2 (coordinator-owned, don't edit; ask if you need more)
-- `src/lib/data.ts`: `getClients()`, `getSettings()` (tax_rate, cash_on_hand_usd, cash_updated_at, calendar_token), `getClientProfit(from, to)`, and the `clientId` filter on `getTransactions`/`getTransactionTotals`.
+- `src/lib/data.ts`: `getClients()`, `getSettings()` (tax_rate, cash_on_hand, cash_updated_at, calendar_token), `getClientProfit(from, to)`, and the `clientId` filter on `getTransactions`/`getTransactionTotals`.
 - `src/lib/forecast.ts`: `forecast(recurring, todayISO, days)` returns `{inUsd, outUsd, netUsd, items[]}` (pure; check with `node --experimental-strip-types src/lib/forecast.check.ts`).
 - `src/lib/actions.ts`:
   - clients: `createClientRecord` / `updateClientRecord` / `deleteClientRecord`
-  - settings: `saveSettings({tax_rate, cash_on_hand_usd})`, `setCalendarFeed(on)`
+  - settings: `saveSettings({tax_rate, cash_on_hand})`, `setCalendarFeed(on)`
   - undo: `restoreTransaction(row)` / `restoreRecurring(row)`
   - onboarding: `loadSampleData()` (empty accounts only)
   - import: `importTransactions(rows)` (≤2000 rows, all validated)
   - `TransactionInput` and `RecurringInput` now take `client_id`; `RecurringInput` also takes `trial_ends`.
 - DB: `clients` table, `transactions.client_id`, `recurring.client_id` + `recurring.trial_ends`, `user_settings`, and the RPC `calendar_feed(p_token)` (anon-callable; returns active plans for the token owner).
 - `docs/QUALITY-BAR.md`: **binding** Hallmark Floor, impeccable, no-ai-slop and Mobbin rules. Read before coding.
+
+## Data APIs added in wave 3 (coordinator-owned)
+- **Base currency:** the columns are renamed `amount_usd`→`amount_base`, `replaces_monthly_usd`→`replaces_monthly`, `monthly_limit_usd`→`monthly_limit` and `cash_on_hand_usd`→`cash_on_hand`. `fx_rate` is now "units of the user's base currency per 1 unit of `currency`". `getSettings().base_currency` is that currency. `changeBaseCurrency(code, rate)` converts every stored amount atomically.
+- **Receipts:** a private Storage bucket `receipts` holds files at `<user id>/<uuid>.<ext>`, with storage RLS on the first folder. Upload flow:
+  1. `createReceiptUpload(mime, size)` returns `{path, token}`.
+  2. The browser calls `supabase.storage.from("receipts").uploadToSignedUrl(path, token, file)`, using a plain anon browser client (`createClient(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY)`).
+  3. `saveReceipt({transaction_id, path, name, mime, size})` records the file.
+  View with `receiptUrl(path)` (a 60s signed URL); delete with `deleteReceipt(id)`. Read with `getAttachments(txnId)` and `getAttachmentCounts()`. Allowed: jpg/png/webp/heic/pdf, ≤10 MB.
+- **Price history:** a DB trigger logs every `recurring.amount` change to `price_changes`. Read it with `getPriceChanges(recurringId?)`.
+- **Cancel-by:** `recurring.cancel_by` (date). `RecurringInput.cancel_by` accepts it, and `calendar_feed` returns it.

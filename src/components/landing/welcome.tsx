@@ -2,7 +2,8 @@ import "./landing.css";
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { Money } from "@/components/money";
-import { ClientsShot, HomeShot, PlansShot } from "@/components/landing/product";
+import Image from "next/image";
+import { IPhone } from "@/components/landing/iphone";
 
 const REPO = "https://github.com/connectfazla/ortha-budget";
 
@@ -46,7 +47,13 @@ export function Welcome() {
         {/* Hero. Phones: the home screen on top, cropped by the fold, then the head and the actions, like an app's welcome screen. */}
         <section className={`${WRAP} flex min-h-[calc(100svh-3.5rem)] flex-col pb-6 lg:grid lg:min-h-0 lg:grid-cols-12 lg:items-center lg:gap-10 lg:pt-10 lg:pb-24`}>
           <div className="landing-peek landing-rise flex max-h-[38svh] min-h-40 flex-1 justify-center overflow-hidden pt-2 lg:order-last lg:col-span-5 lg:col-start-8 lg:max-h-none lg:overflow-visible lg:pt-0" style={{ "--i": 2 } as React.CSSProperties}>
-            <HomeShot className="shrink-0 shadow-sm" />
+            <IPhone
+              hero
+              src="/landing/home.png"
+              alt="Ortha Budget home screen on an iPhone: $487 net in November, money in and out, and the payments coming up in the next 30 days"
+              sizes="(min-width: 1024px) 296px, 278px"
+              className="w-[300px] shrink-0 max-lg:[filter:none] lg:w-[320px]"
+            />
           </div>
           <div className="pt-4 lg:col-span-6 lg:pt-0">
             <h1 className="landing-rise max-w-[13ch] min-w-0 text-[clamp(2.25rem,6vw,4.75rem)] leading-[1.02] font-semibold tracking-[-0.04em] text-balance [overflow-wrap:break-word]">
@@ -76,7 +83,12 @@ export function Welcome() {
             </p>
           </div>
           <div className="flex justify-center lg:col-span-6 lg:col-start-7">
-            <PlansShot className="shadow-sm" />
+            <IPhone
+              src="/landing/subscriptions.png"
+              alt="Subscriptions screen on an iPhone: $89 a month in tools, a Notion trial ending Nov 18 and Figma due in 3 days"
+              sizes="278px"
+              className="w-[300px]"
+            />
           </div>
         </section>
 
@@ -123,7 +135,22 @@ export function Welcome() {
               in the next 30, 60 and 90 days.
             </p>
           </div>
-          <ClientsShot className="mt-12 shadow-sm lg:mt-16" />
+          <IPhone
+            src="/landing/clients.png"
+            alt="A client's page on an iPhone: Acme Co with a $4,300 margin this year, its monthly retainer and its transactions"
+            sizes="278px"
+            className="mx-auto mt-12 w-[300px] lg:hidden"
+          />
+          <figure className="landing-shot mt-16 overflow-hidden rounded-2xl max-lg:hidden">
+            <Image
+              src="/landing/reports-desktop.png"
+              alt="Reports screen on a desktop: cash flow for six months, spending by category, and income, costs and margin by client"
+              width={2880}
+              height={1576}
+              sizes="(min-width: 1200px) 1120px, calc(100vw - 80px)"
+              className="h-auto w-full"
+            />
+          </figure>
         </section>
 
         {/* Private by design, open source. The real policy from supabase/schema.sql. */}
@@ -148,7 +175,7 @@ export function Welcome() {
               <div>
                 <h3 className="text-xl font-semibold tracking-tight">Run it on your own accounts</h3>
                 <p className="text-muted-foreground mt-2 max-w-[48ch] leading-relaxed text-pretty">
-                  MIT licensed. Bring a Clerk app, a Supabase project and a Vercel account, then follow the four steps in
+                  MIT licensed. Bring a Supabase project and a Vercel account, then follow the four steps in
                   the README.
                 </p>
                 <a href={`${REPO}#self-host`} className={`${TEXT_LINK} text-foreground mt-4 inline-block underline underline-offset-4`}>

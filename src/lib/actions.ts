@@ -1,8 +1,8 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, currentUserId } from "@/lib/supabase/server";
 import { CURRENCIES, INTERVALS, KINDS } from "@/lib/money";
 import type { ActionResult, BillingInterval, Direction, RateType, RecurringStatus, TxnKind } from "@/lib/types";
 
@@ -59,13 +59,19 @@ function currency(v: unknown) {
   return oneOf(v ?? "USD", CURRENCIES, "Currency");
 }
 
-/** USD always has fx_rate 1, whatever the client sent. */
-function fx(cur: string, v: unknown) {
-  return cur === "USD" ? 1 : positive(v, "Exchange rate");
+/** An entry in the user's base currency always has fx_rate 1, whatever the client sent. */
+function fx(cur: string, base: string, v: unknown) {
+  return cur === base ? 1 : positive(v, "Exchange rate");
+}
+
+/** The signed-in user's base currency (USD until they change it in settings). */
+async function baseCurrencyOf(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data } = await supabase.from("user_settings").select("base_currency").maybeSingle();
+  return (data?.base_currency as string | undefined) ?? "USD";
 }
 
 async function signedIn() {
-  return Boolean((await auth()).userId);
+  return Boolean(await currentUserId());
 }
 
 async function run(fn: () => Promise<{ error: { message: string } | null }>): Promise<ActionResult> {
@@ -95,11 +101,11 @@ export type TransactionInput = {
   vendor?: string | null;
   contractor_id?: string | null;
   client_id?: string | null;
-  replaces_monthly_usd?: number | null;
+  replaces_monthly?: number | null;
   notes?: string | null;
 };
 
-function parseTransaction(i: TransactionInput) {
+function parseTransaction(i: TransactionInput, base: string) {
   const cur = currency(i.currency);
   const kind = oneOf(i.kind, KIND_LIST, "Type");
   return {
@@ -108,32 +114,40 @@ function parseTransaction(i: TransactionInput) {
     kind,
     amount: positive(i.amount, "Amount"),
     currency: cur,
-    fx_rate: fx(cur, i.fx_rate),
+    fx_rate: fx(cur, base, i.fx_rate),
     description: text(i.description, "Description", { required: true })!,
     category: text(i.category, "Category", { max: 60 }) ?? "Other",
     vendor: text(i.vendor, "Vendor", { max: 120 }),
     contractor_id: optionalUuid(i.contractor_id, "Contractor"),
     client_id: optionalUuid(i.client_id, "Client"),
-    replaces_monthly_usd: kind === "lifetime" ? optionalPositive(i.replaces_monthly_usd, "Replaces per month") : null,
+    replaces_monthly: kind === "lifetime" ? optionalPositive(i.replaces_monthly, "Replaces per month") : null,
     notes: text(i.notes, "Notes", { max: 2000 }),
   };
 }
 
 export async function createTransaction(input: TransactionInput) {
-  return run(async () => (await createClient()).from("transactions").insert(parseTransaction(input)));
+  return run(async () => {
+    const supabase = await createClient();
+    return supabase.from("transactions").insert(parseTransaction(input, await baseCurrencyOf(supabase)));
+  });
 }
 
 export async function updateTransaction(id: string, input: TransactionInput) {
-  return run(async () => (await createClient()).from("transactions").update(parseTransaction(input)).eq("id", uuid(id, "id")));
+  return run(async () => {
+    const supabase = await createClient();
+    return supabase.from("transactions").update(parseTransaction(input, await baseCurrencyOf(supabase))).eq("id", uuid(id, "id"));
+  });
 }
 
 /** Undo for deleteTransaction: re-inserts the same row (same id) from the copy the client kept. */
 export async function restoreTransaction(row: TransactionInput & { id: string; recurring_id?: string | null }) {
-  return run(async () =>
-    (await createClient())
+  return run(async () => {
+    const supabase = await createClient();
+    const base = await baseCurrencyOf(supabase);
+    return supabase
       .from("transactions")
-      .insert({ ...parseTransaction(row), id: uuid(row.id, "id"), recurring_id: optionalUuid(row.recurring_id, "Plan") }),
-  );
+      .insert({ ...parseTransaction(row, base), id: uuid(row.id, "id"), recurring_id: optionalUuid(row.recurring_id, "Plan") });
+  });
 }
 
 export async function deleteTransaction(id: string) {
@@ -156,11 +170,12 @@ export type RecurringInput = {
   contractor_id?: string | null;
   client_id?: string | null;
   trial_ends?: string | null;
+  cancel_by?: string | null;
   url?: string | null;
   notes?: string | null;
 };
 
-function parseRecurring(i: RecurringInput) {
+function parseRecurring(i: RecurringInput, base: string) {
   const cur = currency(i.currency);
   const url = text(i.url, "URL", { max: 500 });
   if (url && !/^https?:\/\//i.test(url)) throw new Invalid("URL must start with http:// or https://");
@@ -170,7 +185,7 @@ function parseRecurring(i: RecurringInput) {
     direction: oneOf(i.direction, DIRECTIONS, "Direction"),
     amount: positive(i.amount, "Amount"),
     currency: cur,
-    fx_rate: fx(cur, i.fx_rate),
+    fx_rate: fx(cur, base, i.fx_rate),
     billing_interval: oneOf(i.billing_interval, INTERVAL_LIST, "Billing interval"),
     next_due: isoDate(i.next_due, "Next due"),
     category: text(i.category, "Category", { max: 60 }) ?? "Software",
@@ -178,17 +193,24 @@ function parseRecurring(i: RecurringInput) {
     contractor_id: optionalUuid(i.contractor_id, "Contractor"),
     client_id: optionalUuid(i.client_id, "Client"),
     trial_ends: i.trial_ends ? isoDate(i.trial_ends, "Trial ends") : null,
+    cancel_by: i.cancel_by ? isoDate(i.cancel_by, "Cancel by") : null,
     url,
     notes: text(i.notes, "Notes", { max: 2000 }),
   };
 }
 
 export async function createRecurring(input: RecurringInput) {
-  return run(async () => (await createClient()).from("recurring").insert(parseRecurring(input)));
+  return run(async () => {
+    const supabase = await createClient();
+    return supabase.from("recurring").insert(parseRecurring(input, await baseCurrencyOf(supabase)));
+  });
 }
 
 export async function updateRecurring(id: string, input: RecurringInput) {
-  return run(async () => (await createClient()).from("recurring").update(parseRecurring(input)).eq("id", uuid(id, "id")));
+  return run(async () => {
+    const supabase = await createClient();
+    return supabase.from("recurring").update(parseRecurring(input, await baseCurrencyOf(supabase))).eq("id", uuid(id, "id"));
+  });
 }
 
 export async function setRecurringStatus(id: string, status: RecurringStatus) {
@@ -199,7 +221,10 @@ export async function setRecurringStatus(id: string, status: RecurringStatus) {
 
 /** Undo for deleteRecurring. */
 export async function restoreRecurring(row: RecurringInput & { id: string }) {
-  return run(async () => (await createClient()).from("recurring").insert({ ...parseRecurring(row), id: uuid(row.id, "id") }));
+  return run(async () => {
+    const supabase = await createClient();
+    return supabase.from("recurring").insert({ ...parseRecurring(row, await baseCurrencyOf(supabase)), id: uuid(row.id, "id") });
+  });
 }
 
 export async function deleteRecurring(id: string) {
@@ -275,7 +300,7 @@ export async function upsertBudget(category: string, monthlyLimitUsd: number) {
       .upsert(
         {
           category: text(category, "Category", { required: true, max: 60 })!,
-          monthly_limit_usd: positive(monthlyLimitUsd, "Monthly limit"),
+          monthly_limit: positive(monthlyLimitUsd, "Monthly limit"),
         },
         { onConflict: "user_id,category" },
       ),
@@ -310,14 +335,14 @@ export async function deleteClientRecord(id: string) {
 
 /* ---------- settings ---------- */
 
-export type SettingsInput = { tax_rate: number; cash_on_hand_usd: number | null };
+export type SettingsInput = { tax_rate: number; cash_on_hand: number | null };
 
 export async function saveSettings(input: SettingsInput) {
   return run(async () => {
     const tax = Number(input.tax_rate);
     if (!Number.isFinite(tax) || tax < 0 || tax > 100) throw new Invalid("Tax set-aside must be 0–100%");
-    const cash = optionalPositive(input.cash_on_hand_usd, "Cash on hand");
-    const row: Record<string, unknown> = { tax_rate: tax, cash_on_hand_usd: cash, updated_at: new Date().toISOString() };
+    const cash = optionalPositive(input.cash_on_hand, "Cash on hand");
+    const row: Record<string, unknown> = { tax_rate: tax, cash_on_hand: cash, updated_at: new Date().toISOString() };
     if (cash !== null) row.cash_updated_at = new Date().toISOString();
     return (await createClient()).from("user_settings").upsert(row, { onConflict: "user_id" });
   });
@@ -364,7 +389,7 @@ export async function loadSampleData() {
       { date: day(-1), direction: "in", kind: "income", amount: 3500, description: "Website build · Acme Co", category: "Client work", client_id: client.id },
       { date: day(-3), direction: "out", kind: "subscription", amount: 45, description: "Figma Professional", category: "Design tools", vendor: "Figma" },
       { date: day(-5), direction: "out", kind: "contractor", amount: 1600, description: "Payout · Alex Rivera", category: "Contractors", contractor_id: dev.id, client_id: client.id },
-      { date: day(-9), direction: "out", kind: "lifetime", amount: 69, description: "TidyCal lifetime", category: "Software", vendor: "AppSumo", replaces_monthly_usd: 12 },
+      { date: day(-9), direction: "out", kind: "lifetime", amount: 69, description: "TidyCal lifetime", category: "Software", vendor: "AppSumo", replaces_monthly: 12 },
       { date: day(-12), direction: "out", kind: "one_time", amount: 1299, description: "Studio display", category: "Hardware" },
       { date: day(-34), direction: "in", kind: "income", amount: 2400, description: "Retainer · Acme Co", category: "Client work", client_id: client.id },
       { date: day(-40), direction: "out", kind: "expense", amount: 220, description: "Ads test", category: "Marketing" },
@@ -378,11 +403,13 @@ export async function loadSampleData() {
 export async function importTransactions(rows: TransactionInput[]): Promise<ActionResult & { count?: number }> {
   if (!Array.isArray(rows) || rows.length === 0) return { ok: false, error: "No rows to import" };
   if (rows.length > 2000) return { ok: false, error: "Import at most 2000 rows at a time" };
+  if (!(await signedIn())) return { ok: false, error: "Not signed in" };
+  const base = await baseCurrencyOf(await createClient());
   let parsed;
   try {
     parsed = rows.map((r, i) => {
       try {
-        return parseTransaction(r);
+        return parseTransaction(r, base);
       } catch (e) {
         if (e instanceof Invalid) throw new Invalid(`Row ${i + 1}: ${e.message}`);
         throw e;
@@ -394,4 +421,105 @@ export async function importTransactions(rows: TransactionInput[]): Promise<Acti
   }
   const res = await run(async () => (await createClient()).from("transactions").insert(parsed));
   return res.ok ? { ok: true, count: parsed.length } : res;
+}
+
+/* ---------- base currency ---------- */
+
+/**
+ * Switch the base currency and convert every stored amount in one DB transaction.
+ * `rate` = units of the new currency per 1 unit of the old one.
+ */
+export async function changeBaseCurrency(currencyCode: string, rate: number) {
+  return run(async () =>
+    (await createClient()).rpc("change_base_currency", {
+      p_new: oneOf(currencyCode, CURRENCIES, "Currency"),
+      p_rate: positive(rate, "Exchange rate"),
+    }),
+  );
+}
+
+/* ---------- receipts ---------- */
+
+const RECEIPT_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic", "application/pdf": "pdf" } as const;
+const MAX_RECEIPT = 10 * 1024 * 1024;
+
+/**
+ * Step 1 of an upload: returns a one-time signed URL for the browser to PUT the file to.
+ * The path is always <user id>/<uuid>.<ext>; storage RLS rejects any other folder.
+ */
+export async function createReceiptUpload(mime: string, size: number): Promise<ActionResult & { path?: string; token?: string }> {
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+  if (!(mime in RECEIPT_TYPES)) return { ok: false, error: "Use a JPG, PNG, WebP, HEIC or PDF" };
+  if (!Number.isInteger(size) || size <= 0 || size > MAX_RECEIPT) return { ok: false, error: "Files can be up to 10 MB" };
+  const path = `${userId}/${crypto.randomUUID()}.${RECEIPT_TYPES[mime as keyof typeof RECEIPT_TYPES]}`;
+  const { data, error } = await (await createClient()).storage.from("receipts").createSignedUploadUrl(path);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, path: data.path, token: data.token };
+}
+
+/** Step 2: record the uploaded file against a transaction. */
+export async function saveReceipt(input: { transaction_id: string; path: string; name: string; mime: string; size: number }) {
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, error: "Not signed in" } as ActionResult;
+  return run(async () => {
+    if (typeof input.path !== "string" || !input.path.startsWith(`${userId}/`) || input.path.includes("..")) throw new Invalid("Invalid file");
+    if (!(input.mime in RECEIPT_TYPES)) throw new Invalid("Unsupported file type");
+    if (!Number.isInteger(input.size) || input.size <= 0 || input.size > MAX_RECEIPT) throw new Invalid("Files can be up to 10 MB");
+    return (await createClient()).from("attachments").insert({
+      transaction_id: uuid(input.transaction_id, "Transaction"),
+      path: input.path,
+      name: text(input.name, "File name", { required: true, max: 200 })!,
+      mime: input.mime,
+      size: input.size,
+    });
+  });
+}
+
+/** Short-lived (60 s) link to view a receipt. RLS means you can only sign your own files. */
+export async function receiptUrl(path: string): Promise<ActionResult & { url?: string }> {
+  if (!(await signedIn())) return { ok: false, error: "Not signed in" };
+  const { data, error } = await (await createClient()).storage.from("receipts").createSignedUrl(String(path), 60);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, url: data.signedUrl };
+}
+
+export async function deleteReceipt(id: string) {
+  return run(async () => {
+    const supabase = await createClient();
+    const { data, error } = await supabase.from("attachments").select("path").eq("id", uuid(id, "id")).maybeSingle();
+    if (error || !data) return { error: error ?? { message: "Not found" } };
+    const rm = await supabase.storage.from("receipts").remove([data.path]);
+    if (rm.error) return { error: rm.error };
+    return supabase.from("attachments").delete().eq("id", id);
+  });
+}
+
+/* ---------- auth (Supabase email + password) ---------- */
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export async function signIn(email: string, password: string): Promise<ActionResult> {
+  const e = typeof email === "string" ? email.trim().toLowerCase() : "";
+  if (!EMAIL_RE.test(e) || typeof password !== "string" || !password) return { ok: false, error: "Enter your email and password" };
+  const { error } = await (await createClient()).auth.signInWithPassword({ email: e, password });
+  // Same message whether the email exists or not.
+  if (error) return { ok: false, error: "Wrong email or password" };
+  return { ok: true };
+}
+
+export async function signUp(email: string, password: string): Promise<ActionResult & { needsConfirmation?: boolean }> {
+  const e = typeof email === "string" ? email.trim().toLowerCase() : "";
+  if (!EMAIL_RE.test(e)) return { ok: false, error: "Enter a valid email" };
+  if (typeof password !== "string" || password.length < 8) return { ok: false, error: "Use at least 8 characters" };
+  if (password.length > 72) return { ok: false, error: "Use at most 72 characters" };
+  const { data, error } = await (await createClient()).auth.signUp({ email: e, password });
+  if (error) return { ok: false, error: error.message };
+  // With email confirmation on, there's no session until the link is clicked.
+  return { ok: true, needsConfirmation: !data.session };
+}
+
+export async function signOut() {
+  await (await createClient()).auth.signOut();
+  redirect("/sign-in");
 }

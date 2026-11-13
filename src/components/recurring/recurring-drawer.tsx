@@ -1,35 +1,28 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { XIcon } from "lucide-react";
+import { baseRate, useDesktop } from "@/components/entry/fx";
 import { Button } from "@/components/ui/button";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { Card } from "@/components/ui/card";
+import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { createRecurring, updateRecurring, type RecurringInput } from "@/lib/actions";
-import { CURRENCIES, INTERVALS, formatMoney } from "@/lib/money";
-import { cn } from "@/lib/utils";
-import type { BillingInterval, Client, Contractor, Direction, Recurring, RecurringStatus } from "@/lib/types";
+import { CURRENCIES, INTERVALS, formatMoney, round2 } from "@/lib/money";
+import type { BillingInterval, Client, Contractor, Direction, PriceChange, Recurring, RecurringStatus } from "@/lib/types";
 
-const NATIVE =
-  "border-input dark:bg-input/30 h-11 w-full rounded-md border bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
-const LABEL = "label";
+// NativeSelect sizes its inner <select>; this lifts it to the 44px touch target the inputs use.
+const NATIVE = "w-full *:data-[slot=native-select]:h-11";
+const SEGMENT = "h-9 text-xs text-muted-foreground data-pressed:text-foreground";
 
-// USD-per-unit rates from open.er-api.com (same helper as add-entry-drawer), fetched once per page load.
-let ratesPromise: Promise<Record<string, number>> | null = null;
-function usdRate(cur: string): Promise<number | null> {
-  ratesPromise ??= fetch("https://open.er-api.com/v6/latest/USD")
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-    .then((j: { rates?: Record<string, number> }) => j.rates ?? {})
-    .catch(() => {
-      ratesPromise = null;
-      return {};
-    });
-  return ratesPromise.then((rates) => (rates[cur] > 0 ? Number((1 / rates[cur]).toPrecision(6)) : null));
-}
-
+const fmtDay = (s: string) => new Date(`${s.slice(0, 10)}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 const num = (s: string) => Number(s.replace(/,/g, "").trim());
 
 export function RecurringDrawer({
@@ -40,6 +33,8 @@ export function RecurringDrawer({
   clients,
   categories,
   today,
+  priceChanges,
+  baseCurrency = "USD",
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -49,17 +44,35 @@ export function RecurringDrawer({
   clients?: Client[];
   categories: string[];
   today: string;
+  /** Price history for `item`, newest first. */
+  priceChanges?: PriceChange[];
+  /** The user's base currency (settings). */
+  baseCurrency?: string;
 }) {
+  // Same layout as AddEntryDrawer: right-hand panel on desktop, bottom sheet on mobile.
+  const desktop = useDesktop();
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
-        <DrawerHeader className="pb-2">
+    <Drawer open={open} onOpenChange={onOpenChange} swipeDirection={desktop ? "right" : "down"}>
+      <DrawerContent className="lg:h-dvh lg:max-h-dvh lg:w-[440px] lg:border-l">
+        <DrawerHeader className="flex-row items-center justify-between pt-2 pb-2 text-left">
           <DrawerTitle className="text-sm font-medium">
             {item ? "Edit recurring" : "New recurring"}
           </DrawerTitle>
+          <DrawerClose render={<Button type="button" variant="ghost" size="icon-lg" aria-label="Close" />}>
+            <XIcon />
+          </DrawerClose>
         </DrawerHeader>
         {/* Form mounts only while open, so state resets per open. */}
-        <Form item={item} contractors={contractors} clients={clients} categories={categories} today={today} close={() => onOpenChange(false)} />
+        <Form
+          item={item}
+          contractors={contractors}
+          clients={clients}
+          categories={categories}
+          today={today}
+          priceChanges={priceChanges}
+          base={baseCurrency}
+          close={() => onOpenChange(false)}
+        />
       </DrawerContent>
     </Drawer>
   );
@@ -71,6 +84,8 @@ function Form({
   clients,
   categories,
   today,
+  priceChanges,
+  base,
   close,
 }: {
   item: Recurring | null;
@@ -78,23 +93,28 @@ function Form({
   clients?: Client[];
   categories: string[];
   today: string;
+  priceChanges?: PriceChange[];
+  base: string;
   close: () => void;
 }) {
+  const id = useId();
   const [pending, start] = useTransition();
   const [name, setName] = useState(item?.name ?? "");
   const [vendor, setVendor] = useState(item?.vendor ?? "");
   const [direction, setDirection] = useState<Direction>(item?.direction ?? "out");
   const [amount, setAmount] = useState(item ? String(item.amount) : "");
-  const [currency, setCurrency] = useState(item?.currency ?? "USD");
-  const [fx, setFx] = useState(item && item.currency !== "USD" ? String(item.fx_rate) : "");
+  const [currency, setCurrency] = useState(item?.currency ?? base);
+  const [fx, setFx] = useState(item && item.currency !== base ? String(item.fx_rate) : "");
+  const [fxError, setFxError] = useState(false);
   const latestCurrency = useRef(currency);
 
   function pickCurrency(cur: string) {
     latestCurrency.current = cur;
     setCurrency(cur);
     setFx("");
-    if (cur === "USD") return;
-    usdRate(cur).then((rate) => {
+    setFxError(false);
+    if (cur === base) return;
+    baseRate(cur, base).then((rate) => {
       if (rate && latestCurrency.current === cur) setFx((f) => (f === "" ? String(rate) : f));
     });
   }
@@ -105,6 +125,7 @@ function Form({
   const [contractor, setContractor] = useState(item?.contractor_id ?? "none");
   const [clientId, setClientId] = useState(item?.client_id ?? "none");
   const [trialEnds, setTrialEnds] = useState(item?.trial_ends ?? "");
+  const [cancelBy, setCancelBy] = useState(item?.cancel_by ?? "");
   const [url, setUrl] = useState(item?.url ?? "");
   const [notes, setNotes] = useState(item?.notes ?? "");
 
@@ -112,20 +133,21 @@ function Form({
 
   const clientItems = [{ value: "none", label: "None" }, ...(clients ?? []).map((c) => ({ value: c.id, label: c.name }))];
 
-  const isUsd = currency === "USD";
+  const isBase = currency === base;
   const amountN = num(amount);
-  const fxN = isUsd ? 1 : num(fx);
+  const fxN = isBase ? 1 : num(fx);
 
   function save() {
-    if (!isUsd && !(fxN > 0)) {
-      toast.error("Enter the FX rate to USD");
+    if (!isBase && !(fxN > 0)) {
+      setFxError(true);
+      toast.error(`Enter what 1 ${currency} is in ${base}`);
       return;
     }
     const input: RecurringInput = {
       name,
       vendor: vendor || null,
       direction,
-      amount: Number(amount),
+      amount: amountN,
       currency,
       fx_rate: fxN,
       billing_interval: interval,
@@ -135,6 +157,7 @@ function Form({
       contractor_id: contractor === "none" ? null : contractor,
       client_id: clientId === "none" ? null : clientId,
       trial_ends: trialEnds || null,
+      cancel_by: cancelBy || null,
       url: url || null,
       notes: notes || null,
     };
@@ -156,87 +179,120 @@ function Form({
       }}
     >
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
-        <div className="grid grid-cols-2 gap-1 rounded-md border p-1" role="group" aria-label="Direction">
-          {(["out", "in"] as const).map((d) => (
-            <button
-              key={d}
-              type="button"
-              aria-pressed={direction === d}
-              onClick={() => setDirection(d)}
-              className={cn(
-                "focus-visible:ring-ring/50 h-9 rounded-sm text-xs font-medium outline-none focus-visible:ring-3",
-                direction === d ? "bg-muted text-foreground border" : "text-muted-foreground",
-              )}
-            >
-              {d === "out" ? "Money out" : "Money in (retainer)"}
-            </button>
-          ))}
-        </div>
+        <ToggleGroup
+          aria-label="Direction"
+          value={[direction]}
+          onValueChange={(v) => v[0] && setDirection(v[0] as Direction)}
+          spacing={0}
+          variant="outline"
+          className="grid w-full grid-cols-2"
+        >
+          <ToggleGroupItem value="out" className={SEGMENT}>
+            Money out
+          </ToggleGroupItem>
+          <ToggleGroupItem value="in" className={SEGMENT}>
+            Money in (retainer)
+          </ToggleGroupItem>
+        </ToggleGroup>
 
-        <Field label="Name">
-          <Input className="h-11" value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} />
+        <Field>
+          <FieldLabel htmlFor={`${id}-name`} className="label">Name</FieldLabel>
+          <Input id={`${id}-name`} className="h-11" value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} />
         </Field>
-        <Field label="Vendor">
-          <Input className="h-11" value={vendor} onChange={(e) => setVendor(e.target.value)} />
+        <Field>
+          <FieldLabel htmlFor={`${id}-vendor`} className="label">Vendor</FieldLabel>
+          <Input id={`${id}-vendor`} className="h-11" value={vendor} onChange={(e) => setVendor(e.target.value)} />
         </Field>
 
-        <div className="grid grid-cols-[1fr_6.5rem] gap-2">
-          <Field label="Amount">
-            <Input className="h-11" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+        <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-2">
+          <Field>
+            <FieldLabel htmlFor={`${id}-amount`} className="label">Amount</FieldLabel>
+            <Input id={`${id}-amount`} className="h-11" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))} required />
           </Field>
-          <Field label="Currency">
-            <select className={NATIVE} value={currency} onChange={(e) => pickCurrency(e.target.value)}>
+          <Field>
+            <FieldLabel htmlFor={`${id}-cur`} className="label">Currency</FieldLabel>
+            <NativeSelect id={`${id}-cur`} className={NATIVE} value={currency} onChange={(e) => pickCurrency(e.target.value)}>
               {CURRENCIES.map((c) => (
-                <option key={c}>{c}</option>
+                <NativeSelectOption key={c} value={c}>
+                  {c}
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </Field>
         </div>
-        {currency !== "USD" && (
-          <Field label={`USD per 1 ${currency}`}>
-            <Input className="h-11" inputMode="decimal" value={fx} onChange={(e) => setFx(e.target.value.replace(/[^\d.,]/g, ""))} required />
+        {!isBase && (
+          <Field data-invalid={fxError}>
+            <FieldLabel htmlFor={`${id}-fx`} className="label">
+              1 {currency} in {base}
+            </FieldLabel>
+            <Input
+              id={`${id}-fx`}
+              className="h-11"
+              inputMode="decimal"
+              value={fx}
+              aria-invalid={fxError}
+              onChange={(e) => {
+                setFxError(false);
+                setFx(e.target.value.replace(/[^\d.,]/g, ""));
+              }}
+              required
+            />
+            {fxError ? (
+              <FieldError>Enter what 1 {currency} is in {base}.</FieldError>
+            ) : amountN > 0 && fxN > 0 ? (
+              <FieldDescription className="text-xs tabular-nums">
+                ≈ {formatMoney(round2(amountN * fxN), base)} {base}
+              </FieldDescription>
+            ) : null}
           </Field>
-        )}
-        {!isUsd && amountN > 0 && fxN > 0 && (
-          <p className="text-muted-foreground tabular-nums text-xs">≈ {formatMoney(Math.round(amountN * fxN * 100) / 100)} USD</p>
         )}
 
         <div className="grid grid-cols-2 gap-2">
-          <Field label="Billing">
-            <select className={NATIVE} value={interval} onChange={(e) => setInterval_(e.target.value as BillingInterval)}>
+          <Field>
+            <FieldLabel htmlFor={`${id}-interval`} className="label">Billing</FieldLabel>
+            <NativeSelect id={`${id}-interval`} className={NATIVE} value={interval} onChange={(e) => setInterval_(e.target.value as BillingInterval)}>
               {Object.entries(INTERVALS).map(([k, v]) => (
-                <option key={k} value={k}>
+                <NativeSelectOption key={k} value={k}>
                   {v.label}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </Field>
-          <Field label="Next due">
-            <Input className="h-11" type="date" value={nextDue} onChange={(e) => setNextDue(e.target.value)} required />
+          <Field>
+            <FieldLabel htmlFor={`${id}-due`} className="label">Next due</FieldLabel>
+            <Input id={`${id}-due`} className="h-11" type="date" value={nextDue} onChange={(e) => setNextDue(e.target.value)} required />
           </Field>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="Category">
-            <Input className="h-11" list="rec-cats" value={category} onChange={(e) => setCategory(e.target.value)} />
-            <datalist id="rec-cats">
-              {categories.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
-          </Field>
-          <Field label="Status">
-            <select className={NATIVE} value={status} onChange={(e) => setStatus(e.target.value as RecurringStatus)}>
-              <option value="active">Active</option>
-              <option value="paused">Paused</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </Field>
-        </div>
+        <Field>
+          <FieldLabel htmlFor={`${id}-cat`} className="label">Category</FieldLabel>
+          <Input id={`${id}-cat`} className="h-11" list={`${id}-cats`} value={category} onChange={(e) => setCategory(e.target.value)} />
+          <datalist id={`${id}-cats`}>
+            {categories.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </Field>
+        <Field>
+          <FieldLabel id={`${id}-status`} className="label">Status</FieldLabel>
+          <ToggleGroup
+            aria-labelledby={`${id}-status`}
+            value={[status]}
+            onValueChange={(v) => v[0] && setStatus(v[0] as RecurringStatus)}
+            spacing={0}
+            variant="outline"
+            className="grid w-full grid-cols-3"
+          >
+            <ToggleGroupItem value="active" className={SEGMENT}>Active</ToggleGroupItem>
+            <ToggleGroupItem value="paused" className={SEGMENT}>Paused</ToggleGroupItem>
+            <ToggleGroupItem value="cancelled" className={SEGMENT}>Cancelled</ToggleGroupItem>
+          </ToggleGroup>
+        </Field>
 
-        <Field label="Contractor (optional)">
+        <Field>
+          <FieldLabel htmlFor={`${id}-contractor`} className="label">Contractor (optional)</FieldLabel>
           <Select value={contractor} onValueChange={(v) => setContractor(v ?? "none")} items={items}>
-            <SelectTrigger className="h-11 w-full" aria-label="Contractor">
+            <SelectTrigger id={`${id}-contractor`} className="h-11 w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -249,9 +305,10 @@ function Form({
           </Select>
         </Field>
         {clients ? (
-          <Field label="Client (optional)">
+          <Field>
+            <FieldLabel htmlFor={`${id}-client`} className="label">Client (optional)</FieldLabel>
             <Select value={clientId} onValueChange={(v) => setClientId(v ?? "none")} items={clientItems}>
-              <SelectTrigger className="h-11 w-full" aria-label="Client">
+              <SelectTrigger id={`${id}-client`} className="h-11 w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -264,30 +321,54 @@ function Form({
             </Select>
           </Field>
         ) : null}
-        <Field label="Trial ends (optional)">
-          <Input className="h-11" type="date" value={trialEnds} onChange={(e) => setTrialEnds(e.target.value)} />
+        <Field>
+          <FieldLabel htmlFor={`${id}-trial`} className="label">Trial ends (optional)</FieldLabel>
+          <Input id={`${id}-trial`} className="h-11" type="date" value={trialEnds} onChange={(e) => setTrialEnds(e.target.value)} />
         </Field>
-        <Field label="URL">
-          <Input className="h-11" type="url" inputMode="url" placeholder="https://" value={url} onChange={(e) => setUrl(e.target.value)} />
+        <Field>
+          <FieldLabel htmlFor={`${id}-cancel`} className="label">Cancel by (optional)</FieldLabel>
+          <Input id={`${id}-cancel`} className="h-11" type="date" value={cancelBy} onChange={(e) => setCancelBy(e.target.value)} />
+          <FieldDescription className="text-xs">We&apos;ll remind you in your calendar.</FieldDescription>
         </Field>
-        <Field label="Notes">
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} />
+        <Field>
+          <FieldLabel htmlFor={`${id}-url`} className="label">URL</FieldLabel>
+          <Input id={`${id}-url`} className="h-11" type="url" inputMode="url" placeholder="https://" value={url} onChange={(e) => setUrl(e.target.value)} />
         </Field>
+        <Field>
+          <FieldLabel htmlFor={`${id}-notes`} className="label">Notes</FieldLabel>
+          <Textarea id={`${id}-notes`} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} />
+        </Field>
+        {item && priceChanges && priceChanges.length > 0 ? (
+          <section aria-labelledby={`${id}-history`}>
+            <h3 id={`${id}-history`} className="label">Price history</h3>
+            <Card size="sm" className="mt-1.5 gap-0 py-0">
+              <ul className="divide-y text-sm">
+                {priceChanges.map((c) => (
+                  <li key={c.id} className="flex items-baseline justify-between gap-3 px-3 py-2">
+                    <span className="text-muted-foreground tabular-nums text-xs">{fmtDay(c.changed_on)}</span>
+                    <span className="tabular-nums">
+                      from {formatMoney(c.old_amount, c.currency)} to {formatMoney(c.new_amount, c.currency)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </section>
+        ) : null}
       </div>
       <div className="bg-popover sticky bottom-0 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <Button type="submit" size="lg" className="h-11 w-full" disabled={pending}>
-          {pending ? "Saving…" : item ? "Save changes" : "Add recurring"}
+          {pending ? (
+            <>
+              <Spinner /> Saving
+            </>
+          ) : item ? (
+            "Save changes"
+          ) : (
+            "Add recurring"
+          )}
         </Button>
       </div>
     </form>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <Label className={cn(LABEL, "flex-col items-stretch gap-1.5")}>
-      {label}
-      {children}
-    </Label>
   );
 }

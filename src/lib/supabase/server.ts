@@ -1,14 +1,31 @@
 import "server-only";
-import { auth } from "@clerk/nextjs/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 /**
- * Supabase client that acts as the signed-in Clerk user. Supabase verifies the Clerk session token
- * (third-party auth), and RLS scopes every row to its `sub` claim. No token → anon role → no table access.
+ * Supabase client for Server Components, Server Actions and Route Handlers, acting as the signed-in user
+ * (session in cookies). RLS scopes every row to `auth.jwt() ->> 'sub'`; no session means the anon role, which has no table access.
  */
 export async function createClient() {
-  const { getToken } = await auth();
-  return createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-    accessToken: async () => (await getToken()) ?? null,
+  const cookieStore = await cookies();
+  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+        } catch {
+          // Called from a Server Component: the proxy refreshes the session instead.
+        }
+      },
+    },
   });
+}
+
+/** The signed-in user's id, or null. Verifies the session with Supabase Auth (not just the cookie). */
+export async function currentUserId(): Promise<string | null> {
+  const { data } = await (await createClient()).auth.getUser();
+  return data.user?.id ?? null;
 }
