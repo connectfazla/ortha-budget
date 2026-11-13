@@ -45,11 +45,11 @@ export function Welcome() {
       <main>
         {/* Hero. Phones: the home screen on top, cropped by the fold, then the head and the actions, like an app's welcome screen. */}
         <section className={`${WRAP} flex min-h-[calc(100svh-3.5rem)] flex-col pb-6 lg:grid lg:min-h-0 lg:grid-cols-12 lg:items-center lg:gap-10 lg:pt-10 lg:pb-24`}>
-          <div className="landing-peek landing-rise flex min-h-40 flex-1 justify-center overflow-hidden pt-2 lg:order-last lg:col-span-5 lg:col-start-8 lg:overflow-visible lg:pt-0" style={{ "--i": 2 } as React.CSSProperties}>
+          <div className="landing-peek landing-rise flex max-h-[38svh] min-h-40 flex-1 justify-center overflow-hidden pt-2 lg:order-last lg:col-span-5 lg:col-start-8 lg:max-h-none lg:overflow-visible lg:pt-0" style={{ "--i": 2 } as React.CSSProperties}>
             <HomeShot className="shrink-0 shadow-sm" />
           </div>
-          <div className="pt-6 lg:col-span-6 lg:pt-0">
-            <h1 className="landing-rise max-w-[13ch] min-w-0 text-[clamp(2.5rem,6vw,4.75rem)] leading-[1.02] font-semibold tracking-[-0.04em] text-balance [overflow-wrap:break-word]">
+          <div className="pt-4 lg:col-span-6 lg:pt-0">
+            <h1 className="landing-rise max-w-[13ch] min-w-0 text-[clamp(2.25rem,6vw,4.75rem)] leading-[1.02] font-semibold tracking-[-0.04em] text-balance [overflow-wrap:break-word]">
               A pocket ledger for your agency.
             </h1>
             <p className={`landing-rise mt-4 max-w-[36ch] lg:mt-6 ${LEDE}`} style={{ "--i": 1 } as React.CSSProperties}>
