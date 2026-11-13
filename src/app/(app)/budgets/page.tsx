@@ -37,7 +37,7 @@ export default async function BudgetsPage({ searchParams }: { searchParams: Prom
   const fm = (n: number) => formatMoney(n, base).replace(/\.00$/, "");
   const pct = (a: number, b: number) => Math.min(100, (a / b) * 100);
   const add = (
-    <Button size="lg" className="h-11">
+    <Button size="lg" variant="brand" className="h-11 px-4">
       <Plus /> Budget
     </Button>
   );
@@ -69,7 +69,7 @@ export default async function BudgetsPage({ searchParams }: { searchParams: Prom
           <Card>
             <CardHeader>
               <CardTitle>
-                <h2 className="label">{left < 0 ? "Over budget this month" : "Left to spend this month"}</h2>
+                <h2 className="text-[17px] font-bold tracking-tight">{left < 0 ? "Over budget this month" : "Left to spend this month"}</h2>
               </CardTitle>
             </CardHeader>
             <CardContent>

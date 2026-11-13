@@ -51,7 +51,7 @@ export function NewRecurringButton({
   return (
     <>
       <Tooltip>
-        <TooltipTrigger render={<Button size="icon-lg" aria-label="Add recurring item" {...props} onClick={() => setOpen(true)} />}>
+        <TooltipTrigger render={<Button size="icon-lg" variant="brand" aria-label="Add recurring item" {...props} onClick={() => setOpen(true)} />}>
           <Plus />
         </TooltipTrigger>
         <TooltipContent>Add recurring item</TooltipContent>

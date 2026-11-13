@@ -145,7 +145,7 @@ export function SubscriptionsView({
           </TabsList>
         </Tabs>
       </div>
-      <Card className="grid grid-cols-3 gap-0 divide-x py-0">
+      <Card className="grid grid-cols-3 gap-0 py-0">
         <Stat label={period === "year" ? "Burn per year" : "Burn per month"}><Money animate value={sum("out")} currency={base} direction="out" hideCents={period === "year"} /></Stat>
         <Stat label={period === "year" ? "Retainers per year" : "Retainers per month"}><Money animate value={sum("in")} currency={base} direction="in" hideCents={period === "year"} /></Stat>
         <Stat label="Active plans"><span className="tabular-nums">{active.length}</span></Stat>
@@ -178,12 +178,12 @@ export function SubscriptionsView({
       ) : (
         groups.map((g) => (
           <section key={g.key} className="mt-5">
-            <h2 className="label mb-1 flex justify-between">
+            <h2 className="mb-2 flex justify-between px-1 text-[17px] font-bold tracking-tight">
               <span>{g.label}</span>
-              <span className="tabular-nums">{g.rows.length}</span>
+              <span className="text-muted-foreground text-[15px] font-semibold tabular-nums">{g.rows.length}</span>
             </h2>
-            <Card className={cn("gap-0 py-0", g.key === "off" && "opacity-60")}>
-            <ul className="divide-y">
+            <Card className={cn("gap-0 py-1.5", g.key === "off" && "opacity-60")}>
+            <ul>
               {g.rows.map((i) => {
                 const d = dueIn(i);
                 const t = trialIn(i);
@@ -192,21 +192,21 @@ export function SubscriptionsView({
                 const cb = act(i) && i.cancel_by && cancelIn(i)! >= 0 ? i.cancel_by : null;
                 const client = i.client_id ? clientName.get(i.client_id) : undefined;
                 return (
-                  <li key={i.id} className="px-3 py-2.5">
+                  <li key={i.id} className="px-4 py-2">
                     <div className="flex items-center gap-1">
                       <Item
                         size="sm"
                         render={<button type="button" onClick={() => open(i)} />}
                         className="press min-h-11 min-w-0 flex-1 flex-nowrap gap-3 rounded-md border-0 p-0 text-left"
                       >
-                        <ItemMedia className="bg-muted size-9 rounded-md border text-sm font-medium" aria-hidden>
+                        <ItemMedia variant="circle" className="text-[15px] font-bold" aria-hidden>
                           {i.name.slice(0, 1).toUpperCase()}
                         </ItemMedia>
                         <ItemContent className="min-w-0 gap-0.5">
-                          <ItemTitle className="w-full">
+                          <ItemTitle className="w-full text-[15px]">
                             <span className="truncate">{i.name}</span>
                           </ItemTitle>
-                          <ItemDescription className="flex flex-wrap items-center gap-x-3 text-xs">
+                          <ItemDescription className="flex flex-wrap items-center gap-x-3 text-[13px]">
                             <span>{INTERVALS[i.billing_interval].label}</span>
                             <span>Due {fmtDate(i.next_due)}</span>
                             {client && <span className="truncate">{client}</span>}
@@ -223,7 +223,7 @@ export function SubscriptionsView({
                           ) : null}
                         </ItemContent>
                         <ItemActions className="shrink-0 flex-col items-end gap-0 text-right text-sm">
-                          <Money value={i.amount_base} currency={base} direction={i.direction} />
+                          <Money value={i.amount_base} currency={base} direction={i.direction} className="text-[15px] font-semibold" />
                           {i.currency !== base && <span className="text-muted-foreground block text-xs tabular-nums">{formatMoney(i.amount, i.currency)}</span>}
                           {i.billing_interval !== "monthly" && (
                             <span className="text-muted-foreground block text-xs tabular-nums">
@@ -325,9 +325,9 @@ function PaidCheck() {
 
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="p-3">
+    <div className="p-4">
       <div className="label">{label}</div>
-      <div className="mt-1 text-lg font-semibold tracking-tight">{children}</div>
+      <div className="mt-1 text-lg font-bold tracking-tight">{children}</div>
     </div>
   );
 }

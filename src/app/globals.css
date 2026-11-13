@@ -8,6 +8,11 @@
 
 /* Colour, radius and shadow utilities. Values live in :root below. */
 @theme inline {
+  --color-hero-from: var(--hero-from);
+  --color-hero-via: var(--hero-via);
+  --color-hero-to: var(--hero-to);
+  --color-on-hero: var(--on-hero);
+  --color-hero-glass: var(--hero-glass);
   --color-background: var(--background);
   --color-brand: var(--brand);
   --color-money-in: var(--money-in);
@@ -53,7 +58,7 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
 
-  /* Radius on a 10px base: xs 4 tags · sm 6 chips · md 8 buttons, inputs · lg 12 cards, menus · xl 16 hero, dialogs · 2xl 20 sheet top */
+  /* Radius on a 10px base: xs 4 tags · sm 6 chips · md 8 inputs · lg 12 menus · xl 16 dialogs · 2xl 20 cards (Revolut) · 3xl 24 hero, sheet top. Buttons are pills. */
   --radius-xs: calc(var(--radius) * 0.4);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -65,7 +70,7 @@
 
   /* Layered soft shadows (Stripe). Each starts with a 1px hairline, so a card needs no extra border.
      Dark mode drops the soft layers; only the hairline and overlay depth remain. */
-  --shadow-card: 0 0 0 1px var(--elev-edge), 0 1px 1px var(--elev-soft), 0 2px 4px -1px var(--elev-soft);
+  --shadow-card: 0 1px 2px var(--elev-soft), 0 8px 24px -12px var(--elev-mid);
   --shadow-raised: 0 0 0 1px var(--elev-edge), 0 2px 4px var(--elev-soft), 0 8px 16px -4px var(--elev-mid);
   --shadow-overlay: 0 0 0 1px var(--elev-edge), 0 4px 8px var(--elev-soft), 0 16px 32px -8px var(--elev-deep), 0 32px 64px -16px var(--elev-mid);
   --shadow-button: 0 1px 1px var(--elev-soft), 0 1px 3px var(--elev-mid);
@@ -121,26 +126,33 @@
   --radius: 0.625rem;
 
   /* Surfaces: L0 page, L1 card, L2 popover/sheet. Dark steps lighter per level. */
-  --background: light-dark(#f5f6f8, #0b0c0e);
-  --card: light-dark(#fdfdfd, #16181b);
-  --popover: light-dark(#fefefe, #1f2226);
-  --foreground: light-dark(#14161a, #f1f2f4);
+  --background: light-dark(#f2f3f7, #050608);
+  --card: light-dark(#ffffff, #14161e);
+  --popover: light-dark(#ffffff, #1b1e28);
+  --foreground: light-dark(#0f1115, #f4f5f8);
   --card-foreground: var(--foreground);
   --popover-foreground: var(--foreground);
-  --primary: light-dark(#14161a, #f1f2f4);
-  --primary-foreground: light-dark(#f5f6f8, #0b0c0e);
-  --secondary: light-dark(#eceef1, #24272c);
+  --primary: light-dark(#0f1115, #f4f5f8);
+  --primary-foreground: light-dark(#ffffff, #050608);
+  --secondary: light-dark(#eceef3, #222532);
   --secondary-foreground: var(--foreground);
-  --muted: light-dark(#eceef1, #24272c);
-  --muted-foreground: light-dark(#5d636c, #9ba1aa);
-  --accent: light-dark(#eceef1, #24272c);
+  --muted: light-dark(#eceef3, #222532);
+  --muted-foreground: light-dark(#5c6270, #9aa0b0);
+  --accent: light-dark(#eceef3, #222532);
   --accent-foreground: var(--foreground);
-  --border: light-dark(#e3e5e9, #2a2d32);
-  --input: light-dark(#d9dce1, #33373d);
+  --border: light-dark(#eceef2, #232633);
+  --input: light-dark(#dcdfe6, #2e3242);
   --scrim: light-dark(rgb(15 23 42 / 0.32), rgb(0 0 0 / 0.6));
 
   /* Accents. Text contrast on L0, L1 and muted is >= 4.5:1 in both modes. */
-  --brand: light-dark(#4b4fd1, #959dff);
+  /* Revolut-style accent: one blue for links, active tab, "+" and focus (owner choice, 2026-11-13). */
+  --brand: light-dark(#0666eb, #4d94ff);
+  /* Hero gradient (Home balance card, landing glow): electric blue into violet (light) or into near-black (dark). */
+  --hero-from: light-dark(#2f6bff, #1f4dff);
+  --hero-via: light-dark(#5b3cf6, #1a2a9e);
+  --hero-to: light-dark(#7a2ff0, #07070c);
+  --on-hero: #ffffff;
+  --hero-glass: rgb(255 255 255 / 0.18);
   --ring: var(--brand);
   --destructive: light-dark(#c23b3b, #ff8a80);
   --money-in: light-dark(#0f7646, #3ecf8e);
@@ -155,19 +167,19 @@
   --chart-in: var(--money-in);
   --chart-out: var(--foreground);
 
-  --sidebar: light-dark(#eef0f3, #101114);
+  --sidebar: light-dark(#ffffff, #0c0d12);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: light-dark(#e3e6ea, #1d2024);
+  --sidebar-accent: light-dark(#f2f3f7, #1b1e28);
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--brand);
 
   /* Shadow inks (blue-grey, low alpha). */
-  --elev-edge: light-dark(rgb(15 23 42 / 0.07), rgb(255 255 255 / 0.08));
-  --elev-soft: light-dark(rgb(15 23 42 / 0.05), transparent);
-  --elev-mid: light-dark(rgb(15 23 42 / 0.08), rgb(0 0 0 / 0.35));
+  --elev-edge: light-dark(rgb(15 23 42 / 0.05), rgb(255 255 255 / 0.06));
+  --elev-soft: light-dark(rgb(15 23 42 / 0.04), transparent);
+  --elev-mid: light-dark(rgb(15 23 42 / 0.06), rgb(0 0 0 / 0.35));
   --elev-deep: light-dark(rgb(15 23 42 / 0.14), rgb(0 0 0 / 0.5));
   --highlight: light-dark(rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.5));
   --skeleton-shine: light-dark(rgb(255 255 255 / 0.7), rgb(255 255 255 / 0.06));
@@ -232,6 +244,28 @@
     font-feature-settings: "zero";
     letter-spacing: 0;
   }
+}
+
+/* Revolut-style hero: the brand gradient with soft light swirls on top (radial gradients, no images).
+   Dark mode's --hero-to is near-black, so the section runs into the page. */
+@utility hero-surface {
+  position: relative;
+  isolation: isolate;
+  color: var(--on-hero);
+  background-image:
+    linear-gradient(to bottom, transparent 88%, var(--background)),
+    radial-gradient(70% 55% at 12% 0%, color-mix(in oklab, var(--on-hero) 26%, transparent), transparent 70%),
+    radial-gradient(55% 45% at 100% 28%, color-mix(in oklab, var(--on-hero) 16%, transparent), transparent 70%),
+    radial-gradient(60% 35% at 0% 62%, color-mix(in oklab, var(--on-hero) 9%, transparent), transparent 70%),
+    linear-gradient(160deg, var(--hero-from), var(--hero-via) 55%, var(--hero-to));
+}
+
+/* Frosted control on the hero (pill, round icon buttons). */
+@utility hero-glass {
+  background-color: var(--hero-glass);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  color: var(--on-hero);
 }
 
 /* Section label (Hallmark): body face, a step smaller, sentence case, untracked, muted. */
@@ -347,7 +381,7 @@
     inset-inline-start: 0;
     width: calc(100% / var(--seg-n));
     translate: calc(var(--seg-i) * 100%) 0;
-    border-radius: var(--radius-md);
+    border-radius: 9999px;
     background-color: light-dark(var(--card), var(--input));
     box-shadow: var(--shadow-raised);
     transition: translate var(--dur-base) var(--ease-ios);
@@ -389,7 +423,7 @@
 
 /* Toasts (sonner). Higher specificity than sonner's injected styles. */
 [data-sonner-toaster] [data-sonner-toast].cn-toast[data-styled="true"] {
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-2xl);
   border-color: transparent;
   box-shadow: var(--shadow-overlay);
   font-family: var(--font-sans);
@@ -400,7 +434,7 @@
 [data-sonner-toaster] [data-sonner-toast].cn-toast[data-styled="true"] [data-button] {
   height: 32px;
   padding-inline: 12px;
-  border-radius: var(--radius-md);
+  border-radius: 9999px;
   background: transparent;
   color: var(--brand);
   font-size: 0.875rem;

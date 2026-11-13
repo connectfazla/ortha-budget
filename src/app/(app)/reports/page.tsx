@@ -52,7 +52,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const title = (t: string) => (
     <CardHeader>
       <CardTitle>
-        <h2 className="label">{t}</h2>
+        <h2 className="text-[17px] font-bold tracking-tight">{t}</h2>
       </CardTitle>
     </CardHeader>
   );
@@ -63,15 +63,15 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <PageHeader
         title="Reports"
         actions={
-          <nav aria-label="Range" className="bg-muted flex gap-1 rounded-md border p-1">
+          <nav aria-label="Range" className="bg-muted flex gap-1 rounded-full p-1">
             {Object.keys(RANGES).map((k) => (
               <Link
                 key={k}
                 href={`/reports?range=${k}`}
                 aria-current={k === range ? "page" : undefined}
                 className={cn(
-                  "press focus-visible:ring-ring/60 flex h-9 min-w-11 items-center justify-center rounded-sm text-xs outline-none focus-visible:ring-2",
-                  k === range ? "bg-card text-foreground border" : "text-muted-foreground hover:text-foreground",
+                  "press focus-visible:ring-ring/60 flex h-9 min-w-11 items-center justify-center rounded-full text-[13px] font-semibold outline-none focus-visible:ring-2",
+                  k === range ? "bg-card text-foreground shadow-raised" : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {k}

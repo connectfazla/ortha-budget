@@ -106,7 +106,7 @@ export function TransactionFilters({ clients = [] }: { filters?: Filters; client
     <div className="mb-3 flex flex-col gap-2">
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2" />
           <Input
             type="search"
             aria-label="Search transactions"
@@ -114,7 +114,7 @@ export function TransactionFilters({ clients = [] }: { filters?: Filters; client
             value={q}
             maxLength={80}
             onChange={(e) => search(e.target.value)}
-            className="bg-muted h-11 rounded-md border-transparent pl-9"
+            className="bg-card shadow-card h-11 rounded-full border-transparent pl-10"
           />
         </div>
         <Tooltip>
@@ -124,7 +124,7 @@ export function TransactionFilters({ clients = [] }: { filters?: Filters; client
                 <Button
                   variant="outline"
                   aria-label={chips.length ? `Filters, ${chips.length} on` : "Filters"}
-                  className="relative size-11 rounded-md"
+                  className="bg-card shadow-card relative size-11"
                 />
               }
             >

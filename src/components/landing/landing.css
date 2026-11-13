@@ -1,41 +1,66 @@
-/* Hallmark · v2.0.0 · redesign: full · theme: brand (kept) · idea: "the page is the ledger: every claim is an entry, and the credits are entries too" · vibe: "a ledger that fits in your pocket, in ink-blue" · genre: modern-minimal · job: sign up · paper: --background (project token, light by default, dark via .dark) · accent: Committed, --field indigo carries the hero and the closing band, --tint the ledger band, --brand stays the signal (links, focus, logo arc), --money-in stays semantic · faces: Geist Sans display and body, Geist Mono for figures and the repo path only · hero: indigo field, head left, the home screen on the right breaking out of the band's bottom edge on desktop and peeking above the head on phones · posture: left-biased split · axes: light/grotesk/chromatic-indigo · nav: wordmark left, two text links right, on the field · footer: wordmark and three links, then the credits line and the Light/Dark/System switch · imagery: real captures 4 from scripts/capture-screens.mjs, three phone screens in an iPhone 16 Pro frame and one desktop report in a plain figure · modes: light+dark, light by default · contrast: pass (field ink 8.9:1 light, 13.7:1 dark; field muted 6.1:1 and 8.0:1; signal 4.7:1 and 6.0:1; tint text 15.7:1, muted 5.3:1, money-in 4.9:1) · deal: none (brand kept) */
-/* Hallmark · pre-emit critique: P4 H5 E4 S4 R5 V4 · weakest: E, the field and tint are the only new material; the phone breaking the band's edge and the colophon set as ledger rows carry the rest */
+/* Hallmark · v2.0.0 · redesign: full · theme: brand (kept) · idea: "the page is the ledger: every claim is an entry, and the credits are entries too" · vibe: "a ledger that fits in your pocket, ink on paper with one light behind the phone" · genre: modern-minimal · job: sign up · paper: white in light, near-black #08090b in dark (dark by default) · accent: Restrained, ink on paper; colour lives in two places only: one blurred glow behind the hero phone from --hero-from/--hero-via/--hero-to, and --brand (Revolut blue) on the primary button, link hovers and focus; --money-in stays semantic · faces: Geist Sans display and body, Geist Mono for figures and the repo path only · hero: plain paper, head left, the home screen on the right over the glow on desktop and peeking above the head on phones · posture: left-biased split · axes: light/grotesk/monochrome+glow · nav: wordmark left, two text links right · footer: wordmark and three links, then the credits line and the Light/Dark/System switch · imagery: real captures 4 from scripts/capture-screens.mjs, three phone screens in an iPhone 16 Pro frame and one desktop report in a plain figure · modes: light+dark, dark by default · contrast: pass (ink 17.9:1 light, 17.6:1 dark; muted 6.1:1 and 7.3:1; white on CTA blue 5.1:1 both modes; closing band ink 18.3:1, muted 8.0:1) · deal: none (brand kept) */
+/* Hallmark · pre-emit critique: P4 H5 E4 S4 R5 V4 · weakest: E, the glow is the only new material; black and white everywhere else keeps it rare, and the black closing band gives the page an end */
 /* Hallmark · waive 47b · three iPhone frames, each holding a real capture of the app with sample data · waiver 11: owner requested a real iPhone frame for the app screens on this welcome page */
-/* Hallmark · answered F4: two filled primaries (hero and closing band) repeat the one action, as the sign-up anatomy asks; both sit on the field, so the primary is the paper button there */
-/* Hallmark · accent refs: Wise and Jeton heroes on a solid brand field (Mobbin sections 60a7108e, 21fcb8eb); Lovart and Cursor footers carry a compact icon theme switch (44d05bc1, 956c4125); Current's footer carries the studio credit (33353d30) */
+/* Hallmark · waive 29 · one blurred blue-to-violet radial glow behind the hero phone, and the same glow on the OG image and social kit · waiver 11: owner chose Revolut blue→violet gradient glow (Floor 11) */
+/* Hallmark · answered F4: two filled primaries (hero and closing band) repeat the one action, as the sign-up anatomy asks; both are the blue CTA, the page's one solid colour */
+/* Hallmark · accent refs: Revolut iOS Home, electric blue bleeding into black (Mobbin flow 5abbe06a); Current hero, colour light rising on a black page (section 92cca7c1); UGLYCASH hero, a glow behind the device on a neutral page (section 38f98d17); Lovart and Cursor footers carry a compact icon theme switch (44d05bc1, 956c4125); Current's footer carries the studio credit (33353d30) */
 
-/* Field tokens. Indigo from the --brand hue, deepened so paper-white text holds 8.9:1; the dark side keeps the hue and drops lightness. */
+/* Landing tokens. Black and white: white paper in light mode, near-black in dark (the default).
+   The one primary is Revolut blue; dark mode keeps the deeper blue so the white label holds 5.1:1 on it.
+   The closing band is black in both modes: ink inverted in light, the deepest black under a hairline in dark. */
 :root {
-  --field: light-dark(#3236a6, #1c1e55);
-  --field-ink: light-dark(#f7f7ff, #f1f2f4);
-  --field-muted: light-dark(#c9ccfa, #b4b8ea);
-  --field-signal: light-dark(#aab0ff, #a3aaff);
-  --field-rule: light-dark(#4a4fbb, #2e3170);
-  --field-cta: var(--field-ink);
-  --field-cta-ink: light-dark(#23268a, #1c1e55);
-  --field-cta-hover: light-dark(#e4e6ff, #d9dcff);
-  /* The ledger band: a wash of the same hue. */
-  --tint: light-dark(#eceefc, #13152e);
-  --tint-rule: light-dark(#d3d6f5, #282c5e);
+  --paper: light-dark(#ffffff, #08090b);
+  --paper-rule: light-dark(#e6e7ea, #1d1f23);
+  --cta: light-dark(var(--brand), #0666eb);
+  --cta-hover: color-mix(in oklab, var(--cta), black 14%);
+  --close: #000000;
+  --close-ink: #f4f5f7;
+  --close-muted: #a1a6ae;
+  --close-rule: #24272c;
+  --close-input: #3a3e44;
+  --close-hover: #1a1c20;
+  --close-edge: light-dark(transparent, #1d1f23);
 }
 
-/* A field re-declares the project tokens, so the logo, links, focus ring and hairlines inside it follow without new classes. */
-.landing-field {
-  --background: var(--field);
-  --foreground: var(--field-ink);
-  --muted-foreground: var(--field-muted);
-  --brand: var(--field-signal);
-  --ring: var(--field-signal);
-  --border: var(--field-rule);
-  --input: var(--field-signal);
-  --muted: var(--field-rule);
+.landing {
+  --background: var(--paper);
+  --border: var(--paper-rule);
+}
+
+/* The one glow: Revolut's electric blue into violet, blurred behind the hero phone and fading into the paper.
+   Dark mode reads the same tokens as blue into navy into black, which is Revolut's own dark Home. */
+.landing-glow {
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 48%;
+  width: min(940px, 180vw);
+  aspect-ratio: 1 / 1.05;
+  translate: -50% -50%;
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side at 50% 40%, var(--hero-from) 0 30%, transparent 78%),
+    radial-gradient(closest-side at 54% 64%, var(--hero-via) 0 22%, transparent 74%),
+    radial-gradient(closest-side, color-mix(in oklab, var(--hero-to) 55%, transparent), transparent);
+  filter: blur(64px);
+  opacity: 0.42;
+}
+
+.dark .landing-glow {
+  opacity: 0.95;
+}
+
+/* The closing band re-declares the project tokens, so links, hairlines and focus inside it follow without new classes. */
+.landing-close {
+  --background: var(--close);
+  --foreground: var(--close-ink);
+  --muted-foreground: var(--close-muted);
+  --border: var(--close-rule);
+  --input: var(--close-input);
+  --muted: var(--close-hover);
+  border-top: 1px solid var(--close-edge);
   background-color: var(--background);
   color: var(--foreground);
-}
-
-.landing-tint {
-  --border: var(--tint-rule);
-  background-color: var(--tint);
 }
 
 /* The one reveal: hero settles once on load. Visible without JS (pure CSS), off under reduced motion. */
@@ -65,10 +90,14 @@
   outline-offset: -1px;
 }
 
-/* On phones the hero visual is cropped by the fold, fading into the field like an app's welcome screen. */
+/* On phones the hero visual is cropped by the fold, fading into the glow like an app's welcome screen.
+   The crop would cut the phone's shadow into a hard edge, so it goes; the glow does the lifting there. */
 @media (max-width: 1023.98px) {
   .landing-peek {
     mask-image: linear-gradient(to bottom, var(--foreground) 70%, transparent);
+  }
+  .landing-peek .landing-device {
+    filter: none;
   }
 }
 

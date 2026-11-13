@@ -14,10 +14,34 @@ export function monthLabel(month: string, style: "short" | "long" = "long") {
   return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: style, year: style === "long" ? "numeric" : undefined });
 }
 
-/** Prev / month / next. `base` is the page path the `?month=` param goes on; the current month drops the param. */
-export function MonthSwitcher({ month, base = "/", allowFuture = false }: { month: string; base?: string; allowFuture?: boolean }) {
+/**
+ * Prev / month / next. `base` is the page path the `?month=` param goes on; the current month drops the param.
+ * `hero` renders the frosted pill that sits under the Home balance [Revolut iOS Home "Accounts" pill].
+ */
+export function MonthSwitcher({ month, base = "/", allowFuture = false, hero = false }: { month: string; base?: string; allowFuture?: boolean; hero?: boolean }) {
   const now = monthKey();
   const href = (m: string) => (m === now ? base : `${base}?month=${m}`);
+  if (hero) {
+    const canNext = allowFuture || month < now;
+    const arrow = "press-strong focus-visible:ring-on-hero/70 grid size-11 place-items-center rounded-full outline-none focus-visible:ring-2 aria-disabled:opacity-40";
+    return (
+      <div className="hero-glass flex h-11 items-center rounded-full px-0.5 text-sm font-semibold">
+        <Link href={href(shiftMonth(month, -1))} aria-label="Previous month" className={arrow}>
+          <ChevronLeft className="size-[18px]" aria-hidden />
+        </Link>
+        <span className="min-w-28 text-center">{monthLabel(month)}</span>
+        {canNext ? (
+          <Link href={href(shiftMonth(month, 1))} aria-label="Next month" className={arrow}>
+            <ChevronRight className="size-[18px]" aria-hidden />
+          </Link>
+        ) : (
+          <span role="link" aria-disabled="true" aria-label="Next month" className={arrow}>
+            <ChevronRight className="size-[18px]" aria-hidden />
+          </span>
+        )}
+      </div>
+    );
+  }
   const step = (delta: -1 | 1, label: string, Icon: typeof ChevronLeft) => (
     <Tooltip>
       <TooltipTrigger

@@ -6,9 +6,12 @@ export const alt = "Budget Ortha: a pocket ledger for your agency";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-// ImageResponse can't read CSS variables, so these mirror the light field tokens in src/components/landing/landing.css
-// (--field, --field-ink, --field-muted, --field-signal). Keep them in step if the tokens move.
-const FIELD = { paper: "#3236a6", ink: "#f7f7ff", muted: "#c9ccfa", signal: "#aab0ff" };
+// ImageResponse can't read CSS variables, so these mirror the dark tokens the landing page opens in:
+// paper from src/components/landing/landing.css, ink, muted and --brand from globals.css, and the glow from
+// --hero-from/--hero-via/--hero-to (dark). Keep them in step if the tokens move.
+const FIELD = { paper: "#08090b", ink: "#f1f2f4", muted: "#9ba1aa", signal: "#4d94ff" };
+// Centred on the phone (x 950), on the root so it is never clipped.
+const GLOW = "radial-gradient(circle at 950px 330px, rgba(31,77,255,1) 0px, rgba(31,77,255,0.8) 200px, rgba(31,77,255,0.42) 330px, rgba(26,42,158,0.2) 450px, rgba(8,9,11,0) 620px)";
 // The phone bezel mirrors iphone.tsx: black glass and the titanium rail.
 const BEZEL = { glass: "#050505", rail: "#b3afa8" };
 
@@ -16,11 +19,11 @@ const BEZEL = { glass: "#050505", rail: "#b3afa8" };
 export default async function Image() {
   const shot = await readFile(join(process.cwd(), "public/landing/home.png"));
   const src = `data:image/png;base64,${shot.toString("base64")}`;
-  // The real home screen in a plain black bezel, rising out of the bottom edge (the landing hero's move).
+  // The real home screen in a plain black bezel, rising out of the bottom edge, with the hero's one glow behind it.
   const phone = { w: 380, screenW: 356, top: 96 };
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", background: FIELD.paper, color: FIELD.ink, position: "relative" }}>
+      <div style={{ width: "100%", height: "100%", display: "flex", backgroundColor: FIELD.paper, backgroundImage: GLOW, color: FIELD.ink, position: "relative" }}>
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 72, width: 720 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" strokeWidth={3.25}>

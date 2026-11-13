@@ -87,6 +87,9 @@ const itemMediaVariants = cva(
       variant: {
         default: "bg-transparent",
         icon: "[&_svg:not([class*='size-'])]:size-4",
+        // Revolut list row: a round tinted disc holding a category icon or initials.
+        circle:
+          "size-10 rounded-full bg-muted text-foreground group-data-[size=xs]/item:size-8 [&_svg:not([class*='size-'])]:size-[18px]",
         image:
           "size-10 overflow-hidden rounded-sm group-data-[size=sm]/item:size-8 group-data-[size=xs]/item:size-6 [&_img]:size-full [&_img]:object-cover",
       },
@@ -130,7 +133,7 @@ function ItemTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="item-title"
       className={cn(
-        "line-clamp-1 flex w-fit items-center gap-2 text-sm leading-snug font-medium underline-offset-4",
+        "line-clamp-1 flex w-fit items-center gap-2 text-sm leading-snug font-semibold underline-offset-4",
         className
       )}
       {...props}

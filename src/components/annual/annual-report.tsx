@@ -73,9 +73,9 @@ export function AnnualReport({ a, minYear, maxYear, generated }: { a: Annual; mi
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <nav aria-label="Year" className="bg-muted flex items-center gap-1 rounded-md border p-1">
+          <nav aria-label="Year" className="bg-muted flex items-center gap-1 rounded-full p-1">
             {a.year > minYear ? yearLink(a.year - 1, ChevronLeft) : null}
-            <span aria-current="page" className="bg-card min-w-14 rounded-sm border px-2 py-1.5 text-center text-sm font-medium tabular-nums">
+            <span aria-current="page" className="bg-card shadow-raised min-w-14 rounded-full px-3 py-1.5 text-center text-sm font-semibold tabular-nums">
               {a.year}
             </span>
             {a.year < maxYear ? yearLink(a.year + 1, ChevronRight) : null}

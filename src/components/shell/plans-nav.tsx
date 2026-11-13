@@ -11,11 +11,11 @@ const ITEMS = [
   { href: "/clients", label: "Clients" },
 ];
 
-/** Segmented sub-nav for the mobile "Plans" tab. Hidden on desktop, where the sidebar lists each page. */
+/** Chip row for the mobile "Plans" tab [Revolut iOS filter chips]. Hidden on desktop, where the sidebar lists each page. */
 export function PlansNav() {
   const pathname = usePathname();
   return (
-    <nav aria-label="Plans" className="bg-muted mb-4 grid grid-cols-4 gap-1 rounded-md border p-1 lg:hidden">
+    <nav aria-label="Plans" className="mb-4 flex gap-2 overflow-x-auto [scrollbar-width:none] lg:hidden">
       {ITEMS.map((i) => {
         const active = pathname.startsWith(i.href);
         return (
@@ -24,8 +24,8 @@ export function PlansNav() {
             href={i.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "press focus-visible:ring-ring/60 flex h-9 items-center justify-center rounded-sm text-xs font-medium outline-none focus-visible:ring-2",
-              active ? "bg-card text-foreground border" : "text-muted-foreground hover:text-foreground",
+              "press focus-visible:ring-ring/60 flex h-9 shrink-0 items-center justify-center rounded-full px-4 text-sm font-semibold outline-none focus-visible:ring-2",
+              active ? "bg-foreground text-background" : "bg-card text-foreground shadow-card hover:bg-muted",
             )}
           >
             {i.label}

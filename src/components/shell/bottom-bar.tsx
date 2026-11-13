@@ -19,7 +19,7 @@ const TABS = [
   { href: "/profile", label: "Profile", icon: UserRound, match: (p: string) => starts(p, "/profile", "/reports", "/budgets", "/import", "/settings") },
 ];
 
-/** Mobile tab bar [YNAB-BUDGET]: 5 slots, raised square Add in the centre. Hidden on lg+. */
+/** Mobile tab bar [Revolut iOS tab bar]: icons over labels, the active tab in brand blue, a round blue Add in the centre. Hidden on lg+. */
 export function BottomBar({
   contractors,
   categories,
@@ -35,7 +35,7 @@ export function BottomBar({
   return (
     <nav
       aria-label="Primary"
-      className="bg-card fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t pb-[env(safe-area-inset-bottom)] lg:hidden"
+      className="bg-card/85 fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_0_var(--elev-edge)] backdrop-blur-xl backdrop-saturate-150 lg:hidden"
     >
       {TABS.map((t) =>
         t ? (
@@ -44,19 +44,18 @@ export function BottomBar({
             href={t.href}
             aria-current={t.match(pathname) ? "page" : undefined}
             className={cn(
-              "press focus-visible:ring-ring/60 relative flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset",
-              t.match(pathname) ? "text-foreground" : "text-muted-foreground",
+              "press focus-visible:ring-ring/60 relative flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset",
+              t.match(pathname) ? "text-brand" : "text-muted-foreground",
             )}
           >
-            {t.match(pathname) ? <span className="bg-brand absolute inset-x-3 top-0 h-0.5" /> : null}
-            <t.icon className="size-5" aria-hidden />
+            <t.icon className="size-6" strokeWidth={t.match(pathname) ? 2.25 : 1.75} aria-hidden />
             {t.label}
           </Link>
         ) : (
-          <div key="add" className="relative flex justify-center">
+          <div key="add" className="flex items-center justify-center">
             <AddEntryDrawer contractors={contractors} categories={categories} clients={clients} baseCurrency={baseCurrency}>
               {/* No tooltip: mobile only, and the label is the glyph everyone reads as "add". */}
-              <Button size="icon-lg" aria-label="Add transaction" className="absolute -top-4 size-14 rounded-md border">
+              <Button size="icon-lg" aria-label="Add transaction" className="bg-brand hover:bg-brand/90 text-on-hero size-12 shadow-raised">
                 <Plus className="size-6" aria-hidden />
               </Button>
             </AddEntryDrawer>

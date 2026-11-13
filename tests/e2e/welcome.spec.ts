@@ -19,17 +19,17 @@ test("signed-out visit to / lands on the welcome page", async ({ page }) => {
   await expect(page).toHaveURL(/\/welcome$/);
 });
 
-test("welcome opens in light mode and the footer switch changes the theme", async ({ page }) => {
+test("welcome opens in dark mode and the footer switch changes the theme", async ({ page }) => {
   await page.goto("/welcome");
   const html = page.locator("html");
-  await expect(html).toHaveClass(/\blight\b/); // defaultTheme="light"
+  await expect(html).toHaveClass(/\bdark\b/); // defaultTheme="dark"
   const appearance = page.getByRole("group", { name: "Appearance" });
-  await appearance.getByRole("button", { name: "Dark" }).click();
-  await expect(html).toHaveClass(/\bdark\b/);
-  await expect(appearance.getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true");
   await appearance.getByRole("button", { name: "Light" }).click();
   await expect(html).toHaveClass(/\blight\b/);
   await expect(html).not.toHaveClass(/\bdark\b/);
+  await expect(appearance.getByRole("button", { name: "Light" })).toHaveAttribute("aria-pressed", "true");
+  await appearance.getByRole("button", { name: "Dark" }).click();
+  await expect(html).toHaveClass(/\bdark\b/);
 });
 
 test("open source and studio credits link out", async ({ page }) => {

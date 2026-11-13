@@ -46,29 +46,28 @@ export function Sidebar({
       href={href}
       aria-current={active(href) ? "page" : undefined}
       className={cn(
-        "press focus-visible:ring-ring/60 relative flex h-9 items-center gap-2.5 px-4 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-inset",
-        active(href) ? "bg-card text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-card/60",
+        "press focus-visible:ring-ring/60 relative mx-2 flex h-10 items-center gap-3 rounded-full px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset",
+        active(href) ? "bg-brand/10 text-brand font-semibold" : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent",
       )}
     >
-      {active(href) ? <span className="bg-brand absolute inset-y-0 left-0 w-0.5" /> : null}
-      <Icon className="size-4" aria-hidden />
+      <Icon className="size-[18px]" aria-hidden />
       {label}
     </Link>
   );
   return (
-    <aside className="bg-sidebar sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r lg:flex">
+    <aside className="bg-sidebar sticky top-0 hidden h-dvh w-60 shrink-0 flex-col shadow-[1px_0_0_var(--elev-edge)] lg:flex">
       <div className="px-4 pt-5 pb-4">
         <Logo />
       </div>
       <div className="px-4 pb-4">
         <AddEntryDrawer contractors={contractors} categories={categories} clients={clients} baseCurrency={baseCurrency}>
-          <Button className="w-full justify-start gap-2" size="lg">
+          <Button className="bg-brand hover:bg-brand/90 text-on-hero h-10 w-full justify-start gap-2 px-4" size="lg">
             <Plus aria-hidden /> Add transaction
-            <Kbd className="bg-primary-foreground/15 text-primary-foreground ml-auto">N</Kbd>
+            <Kbd className="bg-on-hero/20 text-on-hero ml-auto">N</Kbd>
           </Button>
         </AddEntryDrawer>
       </div>
-      <nav aria-label="Primary" className="flex flex-1 flex-col">
+      <nav aria-label="Primary" className="flex flex-1 flex-col gap-0.5">
         {NAV.map((n) => item(n.href, n.label, n.icon))}
       </nav>
       <Separator />

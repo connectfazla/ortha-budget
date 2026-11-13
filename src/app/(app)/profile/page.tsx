@@ -22,17 +22,16 @@ export default async function ProfilePage() {
     <>
       <PageHeader title="Profile" />
       <div className="grid max-w-xl gap-6">
-        <Card>
-          <CardContent className="flex items-center gap-3">
-            <Avatar size="lg">
-              <AvatarFallback className="text-base font-medium">{(email ?? "?").slice(0, 1).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <p className="truncate text-[15px] font-medium" title={email ?? undefined}>{email}</p>
-              <p className="text-muted-foreground text-[13px]">Your data is private to this account.</p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Account header [Revolut iOS Profile]: big round avatar, name, a quiet line under it. */}
+        <div className="flex flex-col items-center gap-3 text-center">
+          <Avatar className="size-20 after:border-0">
+            <AvatarFallback className="bg-brand text-on-hero text-3xl font-bold">{(email ?? "?").slice(0, 1).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 max-w-full">
+            <p className="truncate text-xl font-bold tracking-tight" title={email ?? undefined}>{email}</p>
+            <p className="text-muted-foreground text-sm">Your data is private to this account.</p>
+          </div>
+        </div>
 
         <Group title="Insights">
           <Rows
@@ -93,7 +92,7 @@ export default async function ProfilePage() {
           />
         </Group>
 
-        <Card className="py-0">
+        <Card className="py-1.5">
           <form action={signOut}>
             <Row icon={LogOut} title="Sign out" render={<button type="submit" />} chevron={false} className="text-destructive [&_svg]:text-destructive" />
           </form>

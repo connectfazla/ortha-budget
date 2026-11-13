@@ -20,7 +20,7 @@ const SUBS = { src: "/landing/subscriptions.png", alt: "Budget Ortha subscriptio
  */
 const BOARDS: Record<string, Board> = {
   linkedin: {
-    w: 600, h: 313.5, pad: 32, head: 40, headWidth: 330, top: 76,
+    w: 600, h: 313.5, pad: 32, head: 36, headWidth: 280, top: 80,
     phones: [
       { ...SUBS, left: 318, top: 70, width: 168 },
       { ...HOME, left: 410, top: 34, width: 168 },
@@ -52,9 +52,15 @@ const BOARDS: Record<string, Board> = {
 export default async function SocialPage({ searchParams }: { searchParams: Promise<{ format?: string }> }) {
   const { format = "linkedin" } = await searchParams;
   const b = BOARDS[format] ?? BOARDS.linkedin;
+  // The landing hero's one glow, centred on the phone pair and sized to its spread.
+  const left = Math.min(...b.phones.map((p) => p.left));
+  const right = Math.max(...b.phones.map((p) => p.left + p.width));
+  const top = Math.min(...b.phones.map((p) => p.top));
+  const glow = { left: (left + right) / 2, top: top + b.phones[0].width * 0.9, width: (right - left) * 1.9 };
   return (
-    // theme-scope + light: the kit is always the light palette, whatever the viewer's theme.
-    <div className="theme-scope light landing landing-field social-board" data-format={format} style={{ "--w": `${b.w}px`, "--h": `${b.h}px` } as React.CSSProperties}>
+    // dark: the kit leads with the landing page's default dark palette, whatever the viewer's theme.
+    <div className="dark landing social-board bg-background text-foreground isolate" data-format={format} style={{ "--w": `${b.w}px`, "--h": `${b.h}px` } as React.CSSProperties}>
+      <div aria-hidden className="landing-glow" style={{ left: glow.left, top: glow.top, width: glow.width, filter: `blur(${Math.round(glow.width / 14)}px)` }} />
       <div className="absolute" style={{ left: b.pad, top: format === "story" ? 96 : b.pad }}>
         <Logo />
       </div>

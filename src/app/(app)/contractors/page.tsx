@@ -19,7 +19,7 @@ export default async function ContractorsPage() {
   const [contractors, stats, settings] = await Promise.all([getContractors(), getContractorStats(), getSettings()]);
   const base = settings.base_currency;
   const add = (
-    <Button size="lg" className="h-11" aria-label="Add contractor">
+    <Button size="lg" variant="brand" className="h-11 px-4" aria-label="Add contractor">
       <Plus /> <span className="hidden sm:inline">Contractor</span>
     </Button>
   );

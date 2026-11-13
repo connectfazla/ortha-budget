@@ -160,16 +160,16 @@ export function TransactionList({
         </EmptyHeader>
         <EmptyContent className="flex-row flex-wrap justify-center gap-2">
           {filtered ? (
-            <Button variant="outline" className="h-11 rounded-md" nativeButton={false} render={<Link href="/transactions" />}>
+            <Button variant="outline" className="h-11" nativeButton={false} render={<Link href="/transactions" />}>
               Clear filters
             </Button>
           ) : (
-            <Button variant="outline" className="h-11 rounded-md" nativeButton={false} render={<Link href="/import" />}>
+            <Button variant="outline" className="h-11" nativeButton={false} render={<Link href="/import" />}>
               Import CSV
             </Button>
           )}
           <AddEntryDrawer contractors={contractors} categories={categories} clients={clients} baseCurrency={base}>
-            <Button className="h-11 rounded-md">
+            <Button className="h-11">
               <PlusIcon /> Add entry
             </Button>
           </AddEntryDrawer>
@@ -189,7 +189,7 @@ export function TransactionList({
 
   return (
     // ponytail: one Drawer root per row; fine at the 500-row query cap, switch to one shared drawer if lists get longer.
-    <Card className="gap-0 divide-y py-0">
+    <Card className="gap-0 py-2 lg:divide-y lg:py-0">
       <div className={`hidden gap-3 px-4 py-2 lg:grid ${COLS} ${LABEL}`}>
         <span>Date</span>
         <span>Description</span>
@@ -199,10 +199,10 @@ export function TransactionList({
         <span />
       </div>
       {groups.map((g) => (
-        <section key={g.date} aria-label={fmtDate(g.date, { weekday: "long", month: "long", day: "numeric" })} className="divide-y">
-          <h2 className={`bg-muted/50 flex items-center justify-between px-4 py-2 lg:hidden ${LABEL}`}>
+        <section key={g.date} aria-label={fmtDate(g.date, { weekday: "long", month: "long", day: "numeric" })} className="lg:divide-y">
+          <h2 className="flex items-center justify-between px-4 pt-3 pb-1 text-[15px] font-bold tracking-tight lg:hidden">
             <span>{fmtDate(g.date, { weekday: "short", month: "short", day: "numeric" })}</span>
-            <Money value={Math.abs(g.net)} currency={base} direction={g.net >= 0 ? "in" : "out"} className="text-xs" />
+            <Money value={Math.abs(g.net)} currency={base} direction={g.net >= 0 ? "in" : "out"} className="text-muted-foreground text-[13px] font-semibold" />
           </h2>
           {g.rows.map((t) => {
             const Icon = ICONS[t.kind];
@@ -223,7 +223,7 @@ export function TransactionList({
                         <span className="text-muted-foreground hidden text-sm tabular-nums lg:block">
                           {fmtDate(t.date, { month: "short", day: "numeric" })}
                         </span>
-                        <ItemMedia variant="icon" className="bg-muted size-10 rounded-md border lg:hidden">
+                        <ItemMedia variant="circle" className="lg:hidden">
                           <Icon aria-hidden />
                           <span className="sr-only">{KINDS[t.kind].label}</span>
                         </ItemMedia>
@@ -237,7 +237,7 @@ export function TransactionList({
                               </>
                             ) : null}
                           </ItemTitle>
-                          <ItemDescription className="truncate text-xs lg:hidden">{t.vendor ?? t.category}</ItemDescription>
+                          <ItemDescription className="truncate text-[13px] lg:hidden">{t.vendor ?? t.category}</ItemDescription>
                           {t.vendor ? <ItemDescription className="hidden truncate text-xs lg:block">{t.vendor}</ItemDescription> : null}
                         </ItemContent>
                         <span className="text-muted-foreground hidden truncate text-sm lg:block">{t.category}</span>
@@ -248,7 +248,7 @@ export function TransactionList({
                           </Badge>
                         </span>
                         <ItemActions className="flex-col items-end gap-0 text-right">
-                          <Money value={t.amount_base} currency={base} direction={t.direction} className="block text-[15px] font-medium lg:text-sm" />
+                          <Money value={t.amount_base} currency={base} direction={t.direction} className="block text-[15px] font-semibold lg:text-sm" />
                           {t.currency !== base ? (
                             <span className="text-muted-foreground block text-xs tabular-nums">{formatMoney(t.amount, t.currency)}</span>
                           ) : null}

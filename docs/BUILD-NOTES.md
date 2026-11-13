@@ -59,3 +59,13 @@ All app pages live in `src/app/(app)/…`. `src/app/(app)/layout.tsx` (the shell
 - The product is now named **Budget Ortha** (logo: "Budget" sans semibold plus "Ortha" mono muted). Never write "Ortha Budget".
 - **Categories:** a fixed set lives in `CATEGORIES` (src/lib/money.ts), with `direction` and a lucide `icon` name. Users add custom ones in the `categories` table: `addCategory(name, direction)` and `deleteCategory(id)`. `getCategoryOptions()` returns fixed plus custom as `CategoryOption[]`. In client components, read them with `useCategoryOptions()` from src/components/categories/category-context.tsx (provided by the (app) layout). `getCategories()` still returns names only.
 - **Subscriptions from the + sheet:** `createSubscription(recurringInput, paidToday, todayISO)` creates a real `recurring` plan. With `paidToday` it also logs this period's payment via `mark_recurring_paid`.
+
+## Wave 6: Revolut-style look (owner, 2026-11-13). This overrides earlier colour direction.
+Reference: Revolut iOS Home flows on Mobbin (https://mobbin.com/flows/5abbe06a-b1c2-4781-aa74-f6aee820b558, https://mobbin.com/flows/60bde82a-646a-4888-bc58-886f5a846900).
+- **Neutral base:** light grey page with white cards (≈20px radius, no borders, soft shadow), or a near-black page with navy-grey cards in dark mode.
+- **Colour lives in two places only:**
+  - the **hero gradient** behind the balance: tokens `--hero-from/--hero-via/--hero-to`, Tailwind `from-hero-from via-hero-via to-hero-to`, text `text-on-hero`, frosted controls `bg-hero-glass` + backdrop-blur
+  - the **blue accent** `--brand` (Revolut blue) for links, the active tab, "+" buttons and focus
+- Hero: big bold white balance with small cents, a frosted pill under it, then a row of round frosted icon buttons with labels.
+- Bold, heavy headings and numbers.
+- Hallmark waiver on record: the owner explicitly asked for Revolut's blue→violet gradient (Floor 11 "no purple-to-blue gradient" is waived for the hero only).

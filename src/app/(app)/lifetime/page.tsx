@@ -48,7 +48,7 @@ export default async function LifetimePage() {
   const add = (
     <Tooltip>
       <AddEntryDrawer contractors={contractors} clients={clients} categories={categories} defaultKind="lifetime" baseCurrency={base}>
-        <TooltipTrigger render={<Button size="icon-lg" aria-label="Add lifetime deal" />}>
+        <TooltipTrigger render={<Button size="icon-lg" variant="brand" aria-label="Add lifetime deal" />}>
           <Plus />
         </TooltipTrigger>
       </AddEntryDrawer>

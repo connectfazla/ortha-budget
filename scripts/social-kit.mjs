@@ -19,8 +19,8 @@ const KIT = [
 
 await mkdir(OUT, { recursive: true });
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1200, height: 1000 }, deviceScaleFactor: 2, colorScheme: "light", reducedMotion: "reduce" });
-await ctx.addInitScript(() => localStorage.setItem("theme", "light"));
+const ctx = await browser.newContext({ viewport: { width: 1200, height: 1000 }, deviceScaleFactor: 2, colorScheme: "dark", reducedMotion: "reduce" });
+await ctx.addInitScript(() => localStorage.setItem("theme", "dark"));
 const page = await ctx.newPage();
 
 for (const { format, file, w, h } of KIT) {

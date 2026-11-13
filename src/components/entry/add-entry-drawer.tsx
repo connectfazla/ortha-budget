@@ -92,7 +92,7 @@ export function AddEntryDrawer({ children, ...props }: AddEntryDrawerProps) {
   return (
     <Drawer open={open} onOpenChange={setOpen} swipeDirection={desktop ? "right" : "down"} showSwipeHandle={!desktop}>
       <DrawerTrigger render={children} />
-      <DrawerContent className="max-lg:h-[92dvh] max-lg:max-h-[92dvh] max-lg:rounded-t-xl lg:h-dvh lg:max-h-dvh lg:w-[440px] lg:border-l">
+      <DrawerContent className="max-lg:h-[92dvh] max-lg:max-h-[92dvh] max-lg:rounded-t-3xl lg:h-dvh lg:max-h-dvh lg:w-[440px] lg:border-l">
         {/* The popup unmounts when closed, so the form re-initialises (resets) on every open. */}
         <EntryForm {...props} onDone={() => setOpen(false)} />
       </DrawerContent>
@@ -270,7 +270,7 @@ function EntryForm({
       }}
     >
       <DrawerHeader className="flex-row items-center justify-between pt-2 pb-2 text-left">
-        <DrawerTitle className="text-sm font-medium">
+        <DrawerTitle className="text-[20px] font-bold tracking-tight">
           {t ? "Edit entry" : "Add entry"}
         </DrawerTitle>
         <DrawerClose render={<Button type="button" variant="ghost" size="icon-lg" aria-label="Close" />}>
@@ -309,8 +309,7 @@ function EntryForm({
           value={[direction]}
           onValueChange={(v) => v[0] && pickDirection(v[0] as Direction)}
           spacing={0}
-          variant="outline"
-          className="mt-3 grid w-full grid-cols-2"
+          className="bg-muted mt-3 grid w-full grid-cols-2"
         >
           <ToggleGroupItem value="out" className={SEGMENT}>
             Outflow
@@ -602,9 +601,9 @@ function EntryForm({
 }
 
 const CHIP =
-  "h-9 rounded-sm border px-3 text-xs data-pressed:border-foreground data-pressed:bg-foreground data-pressed:text-background";
+  "h-9 rounded-full bg-muted px-4 text-[13px] font-semibold hover:bg-muted data-pressed:bg-foreground data-pressed:text-background";
 const SEGMENT =
-  "h-10 text-xs text-muted-foreground data-pressed:text-foreground";
+  "h-10 text-sm font-semibold text-muted-foreground data-pressed:text-foreground";
 // Grouped rows [YNAB-ADD]: label left, borderless control right; the row tints while a control inside has focus.
 const ROW = "min-h-12 gap-3 px-3 focus-within:bg-muted/40";
 const ROW_LABEL = "label w-28 flex-none!";

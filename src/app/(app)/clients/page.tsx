@@ -21,7 +21,7 @@ export default async function ClientsPage() {
 
   const add = (
     <ClientDrawer>
-      <Button className="h-11">
+      <Button variant="brand" className="h-11 px-4">
         <PlusIcon /> Add client
       </Button>
     </ClientDrawer>
