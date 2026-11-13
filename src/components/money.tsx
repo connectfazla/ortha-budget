@@ -68,9 +68,11 @@ export function Money({
           const key = chars.length - i;
           const size = small ? "text-[0.6em] align-[0.35em]" : undefined;
           if (c < "0" || c > "9") {
+            // Same box as the digits so signs, $ and , align with them in every engine (iOS Safari
+            // baselines a clipped inline-block at its bottom edge, which left a bare "−" sitting low).
             return (
-              <span key={key} className={size}>
-                {c}
+              <span key={key} className={cn("roll", size)}>
+                <span>{c}</span>
               </span>
             );
           }

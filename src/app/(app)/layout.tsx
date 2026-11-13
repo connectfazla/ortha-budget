@@ -31,7 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex min-h-dvh">
         <Sidebar email={email} name={name} photoUrl={photoUrl} contractors={contractors} categories={categories} clients={clients} baseCurrency={base} />
         <main className="min-w-0 flex-1">
-          <div className="mx-auto w-full max-w-[1100px] px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:px-8 lg:pt-6 lg:pb-12">
+          <div className="mx-auto w-full max-w-[1100px] px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(6rem+env(safe-area-inset-bottom))] lg:px-8 lg:pt-6 lg:pb-12">
             {children}
           </div>
         </main>

@@ -48,7 +48,7 @@ export function Welcome() {
     <div className="landing bg-background text-foreground min-h-dvh">
       {/* Nav and hero on plain paper. The only colour is the glow behind the phone [Revolut iOS Home]. */}
       <div className="relative isolate overflow-x-clip">
-        <header className={`${WRAP} flex h-14 items-center justify-between lg:h-16`}>
+        <header className={`${WRAP} flex h-14 items-center justify-between pt-[env(safe-area-inset-top)] box-content lg:h-16`}>
           <Link href="/welcome" aria-label="Budget Ortha home" className="rounded-sm">
             <Logo />
           </Link>

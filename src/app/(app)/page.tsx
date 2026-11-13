@@ -108,7 +108,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       {/* Hero [Revolut iOS Home]: full-bleed gradient on phones, a rounded panel on desktop. */}
       <section
         aria-labelledby="net-heading"
-        className="hero-surface -mx-4 -mt-4 mb-4 overflow-hidden px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-10 lg:mx-0 lg:mt-0 lg:rounded-3xl lg:px-8 lg:pt-8 lg:pb-9"
+        className="hero-surface -mx-4 -mt-[calc(env(safe-area-inset-top)+1rem)] mb-4 overflow-hidden px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-10 lg:mx-0 lg:mt-0 lg:rounded-3xl lg:px-8 lg:pt-8 lg:pb-9"
       >
         {/* Phone top bar: avatar, frosted search pill, round icon buttons. */}
         <div className="flex items-center gap-2 lg:hidden">
