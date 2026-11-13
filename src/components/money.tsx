@@ -1,3 +1,4 @@
+import { SecondaryLine } from "@/components/currency/secondary-currency";
 import { cn } from "@/lib/utils";
 import type { Direction } from "@/lib/types";
 
@@ -16,6 +17,7 @@ export function Money({
   className,
   hideCents,
   animate,
+  secondary,
 }: {
   value: number;
   currency?: string;
@@ -23,7 +25,10 @@ export function Money({
   className?: string;
   hideCents?: boolean;
   animate?: boolean;
+  /** Opt in to the small second-currency line underneath. Block-level, so only pass it where a line break fits. */
+  secondary?: boolean;
 }) {
+  const tail = secondary ? <SecondaryLine value={value} /> : null;
   const parts = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
@@ -47,6 +52,7 @@ export function Money({
             <span key={i}>{p.value}</span>
           ),
         )}
+        {tail}
       </span>
     );
   }
@@ -80,6 +86,7 @@ export function Money({
           );
         })}
       </span>
+      {tail}
     </span>
   );
 }

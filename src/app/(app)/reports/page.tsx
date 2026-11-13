@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ClientAvatar } from "@/components/clients/client-row";
+import { Money } from "@/components/money";
 import { CashflowChart, DonutChart } from "@/components/reports/charts";
 import { ReportsNav } from "@/components/reports/section-nav";
 import { PageHeader } from "@/components/shell/page-header";
@@ -43,11 +44,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const catTotal = rows.reduce((s, x) => s + x.value, 0);
 
   const fm = (n: number, compact?: boolean) => formatMoney(n, base, { compact });
-  const totals = [
-    ["Total in", fm(totalIn), "text-money-in"],
-    ["Total out", fm(totalOut), ""],
-    ["Net", fm(net), net < 0 ? "text-money-out" : ""],
-    ["Average per month", fm(round2(net / series.length)), net < 0 ? "text-money-out" : ""],
+  const totals: [string, number, string][] = [
+    ["Total in", totalIn, "text-money-in"],
+    ["Total out", totalOut, ""],
+    ["Net", net, net < 0 ? "text-money-out" : ""],
+    ["Average per month", round2(net / series.length), net < 0 ? "text-money-out" : ""],
   ];
   const title = (t: string) => (
     <CardHeader>
@@ -93,7 +94,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               {totals.map(([k, v, c]) => (
                 <div key={k} className="px-3">
                   <dt className="label">{k}</dt>
-                  <dd className={cn("mt-1 text-lg font-semibold tracking-tight tabular-nums", c)}>{v}</dd>
+                  <dd className={cn("mt-1 text-lg font-semibold tracking-tight tabular-nums", c)}><Money secondary value={v} currency={base} /></dd>
                 </div>
               ))}
             </dl>

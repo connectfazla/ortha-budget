@@ -64,6 +64,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         <CardContent>
           <Money
             animate
+            secondary
             value={margin}
             currency={base}
             className={`block text-4xl font-semibold tracking-tight ${margin < 0 ? "text-money-out" : margin > 0 ? "text-money-in" : ""}`}

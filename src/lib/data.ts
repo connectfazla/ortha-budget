@@ -220,6 +220,10 @@ const DEFAULT_SETTINGS: UserSettings = {
   notify_daily_log: true,
   digest_hour: 9,
   reminder_hour: 21,
+  display_name: null,
+  avatar_path: null,
+  notify_prompt_never: false,
+  secondary_currency: null,
 };
 
 /** The user's settings row, or defaults when they haven't saved any yet. */
@@ -228,7 +232,7 @@ export const getSettings = cache(async (): Promise<UserSettings> => {
   const { data, error } = await supabase
     .from("user_settings")
     .select(
-      "tax_rate, cash_on_hand, cash_updated_at, calendar_token, base_currency, timezone, notify_renewals, notify_trials, notify_budgets, notify_daily_log, digest_hour, reminder_hour",
+      "tax_rate, cash_on_hand, cash_updated_at, calendar_token, base_currency, timezone, notify_renewals, notify_trials, notify_budgets, notify_daily_log, digest_hour, reminder_hour, display_name, avatar_path, notify_prompt_never, secondary_currency",
     )
     .maybeSingle();
   if (error) fail("Load settings", error);
@@ -285,3 +289,28 @@ export async function getPushDeviceCount(): Promise<number> {
   if (error) fail("Load push devices", error);
   return count ?? 0;
 }
+
+/** A one-hour signed link to the user's profile photo, or null. */
+export async function getAvatarUrl(path: string | null): Promise<string | null> {
+  if (!path) return null;
+  const { data } = await (await createClient()).storage.from("avatars").createSignedUrl(path, 60 * 60);
+  return data?.signedUrl ?? null;
+}
+
+/**
+ * Units of `to` per 1 unit of `from`, from the free open.er-api.com feed, cached for 12 hours.
+ * Null when the feed is down; callers then hide the second amount instead of showing a wrong one.
+ */
+export async function getDisplayRate(from: string, to: string): Promise<number | null> {
+  if (from === to) return 1;
+  try {
+    const res = await fetch(`https://open.er-api.com/v6/latest/${encodeURIComponent(from)}`, { next: { revalidate: 43_200 } });
+    if (!res.ok) return null;
+    const j = (await res.json()) as { rates?: Record<string, number> };
+    const r = j.rates?.[to];
+    return typeof r === "number" && r > 0 ? r : null;
+  } catch {
+    return null;
+  }
+}
+

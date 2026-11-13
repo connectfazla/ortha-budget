@@ -248,7 +248,7 @@ export function TransactionList({
                           </Badge>
                         </span>
                         <ItemActions className="flex-col items-end gap-0 text-right">
-                          <Money value={t.amount_base} currency={base} direction={t.direction} className="block text-[15px] font-semibold lg:text-sm" />
+                          <Money secondary value={t.amount_base} currency={base} direction={t.direction} className="block text-[15px] font-semibold lg:text-sm" />
                           {t.currency !== base ? (
                             <span className="text-muted-foreground block text-xs tabular-nums">{formatMoney(t.amount, t.currency)}</span>
                           ) : null}

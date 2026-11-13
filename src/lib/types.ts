@@ -82,6 +82,10 @@ export type UserSettings = {
   notify_daily_log: boolean;
   digest_hour: number; // 0–23 local
   reminder_hour: number; // 0–23 local
+  display_name: string | null;
+  avatar_path: string | null; // in the private "avatars" bucket
+  notify_prompt_never: boolean; // "Don't ask again" on the notifications prompt
+  secondary_currency: string | null; // show a small second amount in this currency (null = off)
 };
 
 export type PriceChange = {

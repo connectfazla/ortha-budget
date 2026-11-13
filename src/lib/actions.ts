@@ -533,6 +533,9 @@ export type PushSubscriptionInput = { endpoint: string; keys: { p256dh: string; 
 
 /** Save this device's push subscription (one row per device/browser). */
 export async function savePushSubscription(sub: PushSubscriptionInput) {
+  if ((await (await createClient()).rpc("is_demo_user")).data === true) {
+    return { ok: false, error: "Notifications are turned off in the demo account." } as ActionResult;
+  }
   return run(async () => {
     const endpoint = text(sub?.endpoint, "Endpoint", { required: true, max: 1000 })!;
     if (!/^https:\/\//.test(endpoint)) throw new Invalid("Invalid push endpoint");
@@ -644,3 +647,72 @@ export async function signInDemo(): Promise<ActionResult> {
   const { error } = await (await createClient()).auth.signInWithPassword({ email: "demo@example.com", password: "demo1234" });
   return error ? { ok: false, error: "The demo is resetting. Try again in a minute." } : { ok: true };
 }
+
+/* ---------- profile ---------- */
+
+export async function saveDisplayName(name: string) {
+  return run(async () =>
+    (await createClient())
+      .from("user_settings")
+      .upsert({ display_name: text(name, "Name", { max: 60 }), updated_at: new Date().toISOString() }, { onConflict: "user_id" }),
+  );
+}
+
+const AVATAR_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" } as const;
+
+/** Step 1 of a photo upload: a one-time signed URL for <user id>/avatar-<uuid>.<ext> (≤ 2 MB). */
+export async function createAvatarUpload(mime: string, size: number): Promise<ActionResult & { path?: string; token?: string }> {
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, error: "Not signed in" };
+  const supabase = await createClient();
+  if ((await supabase.rpc("is_demo_user")).data === true) return { ok: false, error: "Photos are turned off in the demo account." };
+  if (!(mime in AVATAR_TYPES)) return { ok: false, error: "Use a JPG, PNG or WebP image" };
+  if (!Number.isInteger(size) || size <= 0 || size > 2 * 1024 * 1024) return { ok: false, error: "Photos can be up to 2 MB" };
+  const path = `${userId}/avatar-${crypto.randomUUID()}.${AVATAR_TYPES[mime as keyof typeof AVATAR_TYPES]}`;
+  const { data, error } = await supabase.storage.from("avatars").createSignedUploadUrl(path);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, path: data.path, token: data.token };
+}
+
+/** Step 2: point the profile at the uploaded photo and remove the previous one. */
+export async function saveAvatar(path: string) {
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, error: "Not signed in" } as ActionResult;
+  return run(async () => {
+    if (typeof path !== "string" || !path.startsWith(`${userId}/avatar-`) || path.includes("..")) throw new Invalid("Invalid file");
+    const supabase = await createClient();
+    const { data: prev } = await supabase.from("user_settings").select("avatar_path").maybeSingle();
+    const res = await supabase.from("user_settings").upsert({ avatar_path: path, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+    if (!res.error && prev?.avatar_path && prev.avatar_path !== path) await supabase.storage.from("avatars").remove([prev.avatar_path]);
+    return res;
+  });
+}
+
+export async function removeAvatar() {
+  return run(async () => {
+    const supabase = await createClient();
+    const { data: prev } = await supabase.from("user_settings").select("avatar_path").maybeSingle();
+    if (prev?.avatar_path) await supabase.storage.from("avatars").remove([prev.avatar_path]);
+    return supabase.from("user_settings").upsert({ avatar_path: null, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  });
+}
+
+/** "Don't ask again" on the notifications prompt (saved to the account, so it holds on every device). */
+export async function neverAskNotifications() {
+  return run(async () =>
+    (await createClient()).from("user_settings").upsert({ notify_prompt_never: true, updated_at: new Date().toISOString() }, { onConflict: "user_id" }),
+  );
+}
+
+/** Show a small second amount under each figure, in this currency. null turns it off. */
+export async function setSecondaryCurrency(code: string | null) {
+  return run(async () =>
+    (await createClient())
+      .from("user_settings")
+      .upsert(
+        { secondary_currency: code === null ? null : oneOf(code, CURRENCIES, "Currency"), updated_at: new Date().toISOString() },
+        { onConflict: "user_id" },
+      ),
+  );
+}
+

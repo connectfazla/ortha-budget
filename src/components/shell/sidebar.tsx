@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { BarChart3, Briefcase, Gift, Home, ListOrdered, PiggyBank, Plus, Repeat, UserRound, Users } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { AddEntryDrawer } from "@/components/entry/add-entry-drawer";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Separator } from "@/components/ui/separator";
@@ -27,12 +28,16 @@ const NAV = [
 /** Desktop sidebar [MERC-HOME][WISE-WEB]. 240px, hidden below lg. The one desktop "Add" lives here. */
 export function Sidebar({
   email,
+  name,
+  photoUrl,
   contractors,
   categories,
   clients,
   baseCurrency,
 }: {
   email: string | null;
+  name: string | null;
+  photoUrl: string | null;
   contractors: Contractor[];
   categories: string[];
   clients: Client[];
@@ -74,8 +79,12 @@ export function Sidebar({
       <div className="py-2">
         {item("/profile", "Profile", UserRound)}
         <form action={signOut} className="flex items-center gap-2 px-4 pt-2 pb-1">
+          <Avatar size="sm" className="after:border-0">
+            {photoUrl ? <AvatarImage src={photoUrl} alt="" /> : null}
+            <AvatarFallback className="bg-brand text-on-hero text-[11px] font-bold">{(name ?? "?").slice(0, 1).toUpperCase()}</AvatarFallback>
+          </Avatar>
           <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs" title={email ?? undefined}>
-            {email}
+            {name}
           </span>
           <Button type="submit" variant="ghost" size="icon-sm" aria-label="Sign out" className="press">
             <LogOut />

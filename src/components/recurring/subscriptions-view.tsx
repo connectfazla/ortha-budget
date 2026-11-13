@@ -146,8 +146,8 @@ export function SubscriptionsView({
         </Tabs>
       </div>
       <Card className="grid grid-cols-3 gap-0 py-0">
-        <Stat label={period === "year" ? "Burn per year" : "Burn per month"}><Money animate value={sum("out")} currency={base} direction="out" hideCents={period === "year"} /></Stat>
-        <Stat label={period === "year" ? "Retainers per year" : "Retainers per month"}><Money animate value={sum("in")} currency={base} direction="in" hideCents={period === "year"} /></Stat>
+        <Stat label={period === "year" ? "Burn per year" : "Burn per month"}><Money animate secondary value={sum("out")} currency={base} direction="out" hideCents={period === "year"} /></Stat>
+        <Stat label={period === "year" ? "Retainers per year" : "Retainers per month"}><Money animate secondary value={sum("in")} currency={base} direction="in" hideCents={period === "year"} /></Stat>
         <Stat label="Active plans"><span className="tabular-nums">{active.length}</span></Stat>
       </Card>
 
@@ -223,7 +223,7 @@ export function SubscriptionsView({
                           ) : null}
                         </ItemContent>
                         <ItemActions className="shrink-0 flex-col items-end gap-0 text-right text-sm">
-                          <Money value={i.amount_base} currency={base} direction={i.direction} className="text-[15px] font-semibold" />
+                          <Money secondary value={i.amount_base} currency={base} direction={i.direction} className="text-[15px] font-semibold" />
                           {i.currency !== base && <span className="text-muted-foreground block text-xs tabular-nums">{formatMoney(i.amount, i.currency)}</span>}
                           {i.billing_interval !== "monthly" && (
                             <span className="text-muted-foreground block text-xs tabular-nums">

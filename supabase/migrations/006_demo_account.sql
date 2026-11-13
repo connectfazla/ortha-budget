@@ -35,8 +35,8 @@ begin
       updated_at = now()
   where id = uid::uuid;
 
-  insert into user_settings (user_id, tax_rate, cash_on_hand, cash_updated_at, base_currency, timezone)
-  values (uid, 25, 18400, now(), 'USD', 'UTC');
+  insert into user_settings (user_id, tax_rate, cash_on_hand, cash_updated_at, base_currency, timezone, display_name, notify_prompt_never)
+  values (uid, 25, 18400, now(), 'USD', 'UTC', 'Demo', true);
 
   insert into clients (user_id, name, color) values (uid, 'Acme Co', '#0666eb') returning id into acme;
   insert into clients (user_id, name, color) values (uid, 'Northwind', '#10b981') returning id into northwind;

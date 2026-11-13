@@ -2,11 +2,11 @@ import Link from "next/link";
 import { BarChart3, Bell, CalendarDays, CalendarRange, Coins, Download, LogOut, Percent, PiggyBank, Upload, Wallet } from "lucide-react";
 import { ThemeSwitch } from "@/components/onboarding/theme-switch";
 import { PageHeader } from "@/components/shell/page-header";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { signOut } from "@/lib/actions";
-import { getSettings, getUserEmail, requireUser } from "@/lib/data";
+import { getAvatarUrl, getSettings, getUserEmail, requireUser } from "@/lib/data";
 import { formatMoney } from "@/lib/money";
+import { ProfileIdentity } from "./profile-photo";
 import { Group, Row, Rows } from "./rows";
 
 /**
@@ -16,22 +16,15 @@ import { Group, Row, Rows } from "./rows";
 export default async function ProfilePage() {
   await requireUser();
   const [email, settings] = await Promise.all([getUserEmail(), getSettings()]);
+  const photoUrl = await getAvatarUrl(settings.avatar_path);
   const base = settings.base_currency;
   const money = <Link href="/profile/money" />;
   return (
     <>
       <PageHeader title="Profile" />
       <div className="grid max-w-xl gap-6">
-        {/* Account header [Revolut iOS Profile]: big round avatar, name, a quiet line under it. */}
-        <div className="flex flex-col items-center gap-3 text-center">
-          <Avatar className="size-20 after:border-0">
-            <AvatarFallback className="bg-brand text-on-hero text-3xl font-bold">{(email ?? "?").slice(0, 1).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 max-w-full">
-            <p className="truncate text-xl font-bold tracking-tight" title={email ?? undefined}>{email}</p>
-            <p className="text-muted-foreground text-sm">Your data is private to this account.</p>
-          </div>
-        </div>
+        {/* Account header [Revolut iOS Profile]: round photo, name, email, then photo and name controls. */}
+        <ProfileIdentity name={settings.display_name?.trim() || email?.split("@")[0] || ""} email={email ?? ""} photoUrl={photoUrl} hasPhoto={!!settings.avatar_path} />
 
         <Group title="Insights">
           <Rows

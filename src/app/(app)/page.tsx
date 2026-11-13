@@ -6,9 +6,9 @@ import { MonthSwitcher, monthLabel, shiftMonth } from "@/components/dashboard/mo
 import { Money } from "@/components/money";
 import { FirstRun } from "@/components/onboarding/first-run";
 import { PageHeader } from "@/components/shell/page-header";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  getBudgets, getCategories, getClients, getContractors, getLifetimeDeals, getMonthSummary, getMonthlySeries, getRecurring, getSettings,
+  getAvatarUrl, getBudgets, getCategories, getClients, getContractors, getLifetimeDeals, getMonthSummary, getMonthlySeries, getRecurring, getSettings,
   getTransactions, getUserEmail, requireUser,
 } from "@/lib/data";
 import { forecast } from "@/lib/forecast";
@@ -48,6 +48,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     return <FirstRun contractors={contractors} categories={categories} clients={clients.filter((c) => !c.archived)} today={today} baseCurrency={settings.base_currency} />;
   }
 
+  const photoUrl = await getAvatarUrl(settings.avatar_path);
   const base = settings.base_currency;
   const prevHasData = prev.inUsd > 0 || prev.outUsd > 0;
   const delta = prevHasData && prev.netUsd !== 0 ? ((summary.netUsd - prev.netUsd) / Math.abs(prev.netUsd)) * 100 : null;
@@ -113,7 +114,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <div className="flex items-center gap-2 lg:hidden">
           <Link href="/profile" aria-label="Profile" className={cn("press-strong shrink-0 rounded-full", glassFocus)}>
             <Avatar className="size-10 after:border-0">
-              <AvatarFallback className="bg-on-hero text-hero-via text-[15px] font-bold">{(email ?? "?").slice(0, 1).toUpperCase()}</AvatarFallback>
+              {photoUrl ? <AvatarImage src={photoUrl} alt="" /> : null}
+              <AvatarFallback className="bg-on-hero text-hero-via text-[15px] font-bold">{(settings.display_name?.trim() || email || "?").slice(0, 1).toUpperCase()}</AvatarFallback>
             </Avatar>
           </Link>
           <Link href="/transactions" className={cn("hero-glass press flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full px-3.5 text-[15px] font-medium", glassFocus)}>
@@ -132,7 +134,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <h2 id="net-heading" aria-label={`Net in ${monthLabel(month)}`} className="text-[15px] font-medium opacity-85">
             {month === now ? "Net this month" : `Net in ${monthLabel(month)}`}
           </h2>
-          <Money animate value={net} currency={base} className="mt-1.5 text-[44px] leading-[1.1] font-bold tracking-tight" />
+          <Money animate secondary value={net} currency={base} className="mt-1.5 text-[44px] leading-[1.1] font-bold tracking-tight" />
           {delta !== null ? (
             <p className="mt-1.5 text-sm font-medium opacity-85">
               {delta >= 0 ? "Up" : "Down"} {Math.abs(delta).toFixed(0)}% from {monthLabel(prevKey, "short")}
@@ -190,7 +192,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                     <ItemTitle className="text-muted-foreground text-[13px] font-medium">{m.label}</ItemTitle>
                   </ItemContent>
                   <ItemActions>
-                    <Money animate value={m.value} currency={base} direction={m.dir} hideCents className="text-lg font-bold" />
+                    <Money animate secondary value={m.value} currency={base} direction={m.dir} hideCents className="text-lg font-bold" />
                   </ItemActions>
                 </Item>
               ))}

@@ -11,7 +11,8 @@
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { BellOff, BellRing, Settings, Share, Smartphone, SquarePlus, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
-import { removePushSubscription, saveNotificationPrefs, savePushSubscription, sendTestPush, type NotificationPrefsInput } from "@/lib/actions";
+import { removePushSubscription, saveNotificationPrefs, sendTestPush, type NotificationPrefsInput } from "@/lib/actions";
+import { isIOS, standalone, subscribeThisDevice } from "@/components/notifications/subscribe";
 import { Button } from "@/components/ui/button";
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Item, ItemContent, ItemGroup, ItemMedia, ItemTitle } from "@/components/ui/item";
@@ -21,16 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 
-const VAPID_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 const noop = () => () => {};
-
-function urlBase64ToUint8Array(s: string) {
-  const raw = atob((s + "=".repeat((4 - (s.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
-  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
-}
-
-const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-const standalone = () => (navigator as Navigator & { standalone?: boolean }).standalone === true || matchMedia("(display-mode: standalone)").matches;
 
 /** What this device can do. iOS only exposes Web Push to Home Screen apps (16.4+). */
 type Env = "ssr" | "ios-browser" | "unsupported" | "denied" | "ready";
@@ -92,33 +84,11 @@ export function Notifications({ prefs }: { prefs: NotificationPrefsInput }) {
 
   const turnOn = () =>
     startBusy(async () => {
-      // Must be the first call in the tap handler: iOS ignores permission requests outside a user gesture.
-      const perm = await Notification.requestPermission();
-      if (perm !== "granted") {
-        // On "denied" the re-render after this transition re-reads Notification.permission and shows the blocked message.
-        if (perm === "default") toast.error("Notifications stay off. Tap Turn on notifications to try again.");
-        return;
-      }
-      if (!VAPID_KEY) return void toast.error("Notifications aren't set up on this server yet.");
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        const s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_KEY) });
-        const json = s.toJSON();
-        const r = await savePushSubscription({
-          endpoint: s.endpoint,
-          keys: { p256dh: json.keys?.p256dh ?? "", auth: json.keys?.auth ?? "" },
-          userAgent: navigator.userAgent.slice(0, 300),
-        });
-        if (!r.ok) {
-          await s.unsubscribe();
-          return void toast.error(r.error);
-        }
-        await saveNotificationPrefs(p); // stores the detected timezone so hours land in local time
-        setSub(s);
-        toast.success("Notifications are on for this device");
-      } catch {
-        toast.error("This device couldn't turn on notifications. Reload the page and try again.");
-      }
+      const r = await subscribeThisDevice();
+      if (!r.ok) return void (r.error && toast.error(r.error));
+      await saveNotificationPrefs(p); // stores the detected timezone so hours land in local time
+      setSub(r.subscription);
+      toast.success("Notifications are on for this device");
     });
 
   const turnOff = () =>

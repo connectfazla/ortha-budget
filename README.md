@@ -63,7 +63,9 @@ Budget Ortha keeps each of those as its own kind of entry and answers three ques
 | | |
 |---|---|
 | **Subscriptions and retainers** | Monthly, quarterly, yearly or weekly plans with the next due date. One tap marks a charge paid, logs it and moves the date forward. Toggle between monthly and yearly cost. |
-| **Notifications** | Add it to your iPhone Home Screen and turn on notifications: a morning summary of renewals, trials, overdue charges and budgets, plus an evening reminder to log the day's expenses (skipped if you already did). You pick the hours. Works on Android and desktop too. |
+| **Notifications** | Add it to your iPhone Home Screen and turn on notifications: a morning summary of renewals, trials, overdue charges and budgets, plus an evening reminder to log the day's expenses (skipped if you already did). You pick the hours. Works on Android and desktop too. The first time you sign in on a device, a short prompt offers to turn it on. |
+| **Profile photo and name** | Add a photo and a name on the Profile page. Without a name, the part of your email before the @ is used. |
+| **Second currency** | Show a small converted amount under totals, such as ৳58,420 under $480, at a daily rate. Turn it on under Profile, Money. |
 | **Calendar feed** | A private `.ics` feed puts renewals, trial end dates and "cancel by" dates into Apple or Google Calendar. |
 | **Trials, cancel-by and price changes** | Trials ending soon and plans you meant to cancel sit at the top. A price increase gets flagged with the date and the percentage. |
 | **Lifetime deals** | Each deal records what it replaces per month and shows how many months until it has paid for itself. |

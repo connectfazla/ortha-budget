@@ -74,7 +74,7 @@ export default async function BudgetsPage({ searchParams }: { searchParams: Prom
             </CardHeader>
             <CardContent>
               <p className={cn("text-4xl font-semibold tracking-tight", left < 0 && "text-money-out")}>
-                <Money animate value={Math.abs(left)} currency={base} hideCents />
+                <Money animate secondary value={Math.abs(left)} currency={base} hideCents />
                 {left < 0 && <span className="ml-2 text-base font-medium">over</span>}
               </p>
               <Progress

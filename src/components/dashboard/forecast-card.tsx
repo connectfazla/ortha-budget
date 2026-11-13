@@ -60,15 +60,15 @@ export function ForecastCard({
         <dl className="grid grid-cols-3 gap-3">
           <div className="min-w-0">
             <dt className="label">Money in</dt>
-            <dd className="mt-1 text-base font-bold"><Money value={inUsd} currency={currency} direction="in" hideCents /></dd>
+            <dd className="mt-1 text-base font-bold"><Money secondary value={inUsd} currency={currency} direction="in" hideCents /></dd>
           </div>
           <div className="min-w-0">
             <dt className="label">Money out</dt>
-            <dd className="mt-1 text-base font-bold"><Money value={outUsd} currency={currency} direction="out" hideCents /></dd>
+            <dd className="mt-1 text-base font-bold"><Money secondary value={outUsd} currency={currency} direction="out" hideCents /></dd>
           </div>
           <div className="min-w-0">
             <dt className="label">Net</dt>
-            <dd className={cn("mt-1 text-base font-bold", net < 0 && "text-money-out")}><Money value={net} currency={currency} hideCents /></dd>
+            <dd className={cn("mt-1 text-base font-bold", net < 0 && "text-money-out")}><Money secondary value={net} currency={currency} hideCents /></dd>
           </div>
         </dl>
         <Separator className="mt-4 mb-1" />
