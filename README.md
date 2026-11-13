@@ -2,24 +2,26 @@
 
 <img src="src/app/icon.svg" width="72" height="72" alt="Budget Ortha logo: a split ring, ink half for money in, indigo half for money out" />
 
-# Budget Ortha
+# Budget Ortha: open-source budget and subscription tracker for agencies
 
 **A pocket ledger for your agency.**
-Track tools, retainers, contractor pay and profit per client, in any currency.
+Track software subscriptions, client retainers, contractor payments and profit per client, in any currency. Free, open source and self-hostable, with a mobile app you install from the browser.
 
 [Live app](https://ortha-budget.vercel.app) ·
-[Self-host](#self-host) ·
+[Self-host](#self-host-it-free) ·
 [How the security works](#security) ·
 [Report a vulnerability](SECURITY.md)
 
 ![MIT license](https://img.shields.io/badge/license-MIT-15171a)
+![Self-hosted](https://img.shields.io/badge/self--hosted-yes-15171a)
+![PWA](https://img.shields.io/badge/PWA-iOS%20%2B%20Android-15171a)
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-15171a)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3d4bd6)
 ![shadcn/ui](https://img.shields.io/badge/shadcn%2Fui-Base%20UI-15171a)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/welcome-dark.webp" />
-  <img src="docs/screenshots/welcome-light.webp" alt="Budget Ortha welcome page with the dashboard shown on an iPhone" width="100%" />
+  <img src="docs/screenshots/welcome-light.webp" alt="Budget Ortha, an open-source budget tracker for agencies, showing the dashboard on an iPhone" width="100%" />
 </picture>
 
 </div>
@@ -35,13 +37,13 @@ Open **[ortha-budget.vercel.app](https://ortha-budget.vercel.app)** and tap **Tr
 
 It's one shared account with six months of sample data. Anyone can add, edit or delete entries, and everything resets every 6 hours. Receipt uploads are turned off in the demo. For your own private data, create an account; it takes 10 seconds.
 
-## Why
+## Why an agency budget tracker
 
 Agency money is lumpy. Some tools bill monthly, some yearly, and one was a lifetime deal you bought two years ago. Retainers land on different days. Contractors want paying in their own currency. A spreadsheet holds all of that until the day it doesn't.
 
 Budget Ortha keeps each of those as its own kind of entry and answers three questions from your phone: what is due, what do you owe, and which clients make you money.
 
-## Screens
+## Screenshots
 
 <table>
   <tr>
@@ -60,7 +62,7 @@ Budget Ortha keeps each of those as its own kind of entry and answers three ques
 
 <img src="docs/screenshots/reports.webp" alt="Reports on desktop: cash flow by month, where the money goes, and profit by client" width="100%" />
 
-## What it does
+## Features
 
 | | |
 |---|---|
@@ -85,7 +87,7 @@ Budget Ortha keeps each of those as its own kind of entry and answers three ques
 | **Import and export** | Import a bank or spreadsheet CSV with column mapping, or export everything as CSV. |
 | **Fast on desktop** | ⌘K command palette, `n` for a new entry, `g` then `h/t/s/r` to jump between pages. |
 
-## Self-host
+## Self-host it (free)
 
 You need a Supabase project and somewhere to run Next.js (Vercel works out of the box).
 
@@ -130,6 +132,40 @@ The data model lives in [`supabase/schema.sql`](supabase/schema.sql), and design
 - Email reminders, as an alternative to the calendar feed
 - Shared read-only access for an accountant
 - Bank CSV presets for common banks
+
+## An open-source alternative to
+
+If you've looked at these tools and wanted something built for an agency, free and self-hostable, this is that. Budget Ortha isn't affiliated with any of them.
+
+| Instead of | What Budget Ortha does differently |
+|---|---|
+| **Rocket Money, Bobby, Subby** (subscription trackers) | Tracks the subscriptions you pay *and* the retainers you receive, per client, in any currency. No bank login needed. |
+| **Copilot Money, Monarch, YNAB** (personal budgeting) | Built around agency money: contractors, clients, lifetime deals and tax set-aside, not household categories. |
+| **Wave, FreshBooks, QuickBooks** (accounting) | A lightweight money tracker for day-to-day decisions, not invoicing or bookkeeping. Export to CSV when your accountant needs it. |
+| **A spreadsheet** | Renewal reminders, multi-currency totals, forecasts and profit per client without formulas. |
+
+## FAQ
+
+**Is Budget Ortha free?**
+Yes. It's MIT-licensed open source. Use the hosted app or run your own copy on Supabase and Vercel's free tiers.
+
+**Does it work on iPhone and Android?**
+Yes. It's a progressive web app (PWA): add it to your Home Screen from Safari or Chrome and it opens full-screen with push notifications (iOS 16.4 or later).
+
+**Can it track subscriptions and remind me before they renew?**
+Yes. Each subscription keeps its next charge date, trial end and "cancel by" date. You get a morning summary by push notification, and a private calendar feed puts renewals into Apple or Google Calendar.
+
+**Does it handle multiple currencies?**
+Yes. Every entry keeps its own currency and exchange rate, totals show in your base currency, and you can show a second currency under each amount (for example BDT under USD).
+
+**Can I track contractor and freelancer payments?**
+Yes. Record payouts per contractor in their currency and see what you've paid them this year.
+
+**Is my data private?**
+Every row is locked to its owner with Postgres row-level security, and the app holds no admin key. Self-host it if you want the data on your own infrastructure.
+
+**Does it connect to my bank?**
+No. Entries are added by hand, by CSV import, or automatically from your subscriptions when you mark them paid. There's no bank sync.
 
 ## License
 
