@@ -6,44 +6,50 @@ import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { CategoryPicker } from "@/components/categories/category-picker";
+import { useDesktop } from "@/components/entry/fx";
 import { Spinner } from "@/components/ui/spinner";
 import { deleteBudget, upsertBudget } from "@/lib/actions";
 import type { Budget } from "@/lib/types";
 
-/** Edit/delete (`budget`) or create (`categories` = unbudgeted picker list). `children` is the trigger. Limits are in `currency` (the base). */
+/** Edit/delete (`budget`) or create. `children` is the trigger. Limits are in `currency` (the base). */
 export function BudgetDrawer({
   budget,
-  categories = [],
   currency,
   children,
 }: {
   budget?: Budget;
+  /** @deprecated Unused: the picker lists every spending category (picking a budgeted one updates its limit). */
   categories?: string[];
   currency: string;
   children: ReactElement;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
+  const [category, setCategory] = useState("");
+  const desktop = useDesktop();
 
   function done(r: { ok: true } | { ok: false; error: string }, msg: string) {
     if (r.ok) {
       toast.success(msg);
       setOpen(false);
+      setCategory("");
     } else toast.error(r.error);
   }
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const category = budget?.category ?? String(f.get("category") ?? "");
-    start(async () => done(await upsertBudget(category, Number(f.get("limit"))), "Budget saved"));
+    const cat = budget?.category ?? category;
+    if (!cat) return void toast.error("Choose a category");
+    start(async () => done(await upsertBudget(cat, Number(f.get("limit"))), "Budget saved"));
   }
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
+    // Same layout as the other drawers: right-hand panel on desktop (the category sub-sheet stacks the same way).
+    <Drawer open={open} onOpenChange={setOpen} swipeDirection={desktop ? "right" : "down"}>
       <DrawerTrigger render={children} />
-      <DrawerContent>
+      <DrawerContent className="lg:h-dvh lg:max-h-dvh lg:w-[440px] lg:border-l">
         <DrawerHeader>
           <DrawerTitle>{budget ? budget.category : "New budget"}</DrawerTitle>
           <DrawerDescription>Monthly limit in {currency}</DrawerDescription>
@@ -52,11 +58,13 @@ export function BudgetDrawer({
           {!budget && (
             <Field>
               <FieldLabel htmlFor="category">Category</FieldLabel>
-              <NativeSelect id="category" name="category" required className="w-full [&_select]:h-11 [&_select]:text-base md:[&_select]:text-sm">
-                {categories.map((c) => (
-                  <NativeSelectOption key={c}>{c}</NativeSelectOption>
-                ))}
-              </NativeSelect>
+              <CategoryPicker
+                id="category"
+                value={category}
+                onChange={setCategory}
+                direction="out"
+                className="h-11 w-full rounded-md border border-input bg-card px-2 focus-visible:border-ring/70 focus-visible:ring-ring/15 dark:bg-input/30"
+              />
             </Field>
           )}
           <Field>

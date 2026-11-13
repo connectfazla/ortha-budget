@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Ortha Budget: a pocket ledger for your agency";
+export const alt = "Budget Ortha: a pocket ledger for your agency";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -30,8 +30,8 @@ export default function Image() {
             <path d="M12 5.75A7.5 7.5 0 0 1 12 20.75" stroke={TOKENS.brand} />
           </svg>
           <div style={{ display: "flex", gap: 12, fontSize: 36, letterSpacing: "-0.02em" }}>
-            <span>Ortha</span>
-            <span style={{ color: TOKENS.muted }}>Budget</span>
+            <span>Budget</span>
+            <span style={{ color: TOKENS.muted }}>Ortha</span>
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>

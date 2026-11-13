@@ -12,7 +12,7 @@ const tick = { fontSize: 10, fontFamily: "var(--font-mono)", fill: "var(--muted-
 
 export function CashChart({ data }: { data: { month: string; label: string; inUsd: number; outUsd: number }[] }) {
   return (
-    <ChartContainer config={config} className="h-52 w-full">
+    <ChartContainer config={config} className="has-[:focus-visible]:ring-ring/60 h-52 w-full rounded-md has-[:focus-visible]:ring-2">
       <BarChart data={data} barGap={2} margin={{ left: 0, right: 4, top: 4 }}>
         <CartesianGrid vertical={false} strokeDasharray="2 4" />
         <XAxis dataKey="label" tickLine={false} axisLine={false} tick={tick} tickMargin={8} />

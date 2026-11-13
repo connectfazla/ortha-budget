@@ -4,7 +4,7 @@ import { LogOut } from "lucide-react";
 import { signOut } from "@/lib/actions";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Briefcase, Gift, Home, ListOrdered, PiggyBank, Plus, Repeat, Settings, Users } from "lucide-react";
+import { BarChart3, Briefcase, Gift, Home, ListOrdered, PiggyBank, Plus, Repeat, UserRound, Users } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { AddEntryDrawer } from "@/components/entry/add-entry-drawer";
 import { Button } from "@/components/ui/button";
@@ -73,7 +73,7 @@ export function Sidebar({
       </nav>
       <Separator />
       <div className="py-2">
-        {item("/settings", "Settings", Settings)}
+        {item("/profile", "Profile", UserRound)}
         <form action={signOut} className="flex items-center gap-2 px-4 pt-2 pb-1">
           <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs" title={email ?? undefined}>
             {email}

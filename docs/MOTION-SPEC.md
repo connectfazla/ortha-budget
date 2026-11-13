@@ -1,4 +1,4 @@
-# Ortha Budget: Motion + Polish Spec (Apple/Stripe vibe, Geist Sans + Geist Mono)
+# Budget Ortha: Motion + Polish Spec (Apple/Stripe vibe, Geist Sans + Geist Mono)
 
 Note: Mobbin is static frames. Motion is inferred from frame sequences (before/after states) plus standard iOS/web practice. Citations below are only flows/screens Mobbin actually returned. Swipe-row, pull-to-refresh and Things returned nothing usable; those recipes cite no Mobbin source (Todoist undo is cited).
 Supersedes the OVERRIDE in DESIGN-BRIEF.md for font (no longer mono everywhere), radius and shadows. Layouts stay.

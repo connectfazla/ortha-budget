@@ -1,4 +1,4 @@
--- Ortha Budget schema. Paste into Supabase → SQL Editor → Run, once, on a fresh project.
+-- Budget Ortha schema. Paste into Supabase → SQL Editor → Run, once, on a fresh project.
 -- Auth is Supabase Auth (email + password): every row is owned by the user id in the JWT `sub` claim.
 
 create type direction as enum ('in', 'out');
@@ -488,3 +488,18 @@ $$;
 revoke execute on function push_tick() from public, anon, authenticated;
 
 select cron.schedule('ortha-push-hourly', '0 * * * *', 'select public.push_tick()');
+
+-- ---------- 005: custom categories ----------
+
+create table categories (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null default (auth.jwt() ->> 'sub'),
+  name text not null check (length(btrim(name)) between 1 and 40),
+  direction direction not null default 'out',
+  created_at timestamptz not null default now(),
+  unique (user_id, name)
+);
+alter table categories enable row level security;
+create policy own_categories on categories for all to authenticated
+  using (user_id = ((select auth.jwt()) ->> 'sub')) with check (user_id = ((select auth.jwt()) ->> 'sub'));
+revoke all on categories from anon;

@@ -9,7 +9,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
-import { BarChart3, FileUp, Gift, Home, ListOrdered, MoonIcon, PiggyBank, Plus, Repeat, SearchIcon, Settings, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, Briefcase, FileUp, Gift, Home, ListOrdered, MoonIcon, PiggyBank, Plus, Repeat, SearchIcon, UserRound, Users, type LucideIcon } from "lucide-react";
 import { AddEntryDrawer } from "@/components/entry/add-entry-drawer";
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,10 +22,11 @@ const PAGES: { href: string; label: string; icon: LucideIcon; keys?: string }[] 
   { href: "/subscriptions", label: "Subscriptions", icon: Repeat, keys: "g s" },
   { href: "/lifetime", label: "Lifetime deals", icon: Gift },
   { href: "/contractors", label: "Contractors", icon: Users },
+  { href: "/clients", label: "Clients", icon: Briefcase },
   { href: "/reports", label: "Reports", icon: BarChart3, keys: "g r" },
   { href: "/budgets", label: "Budgets", icon: PiggyBank },
   { href: "/import", label: "Import transactions", icon: FileUp },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/profile", label: "Profile", icon: UserRound },
 ];
 const GO: Record<string, string> = { h: "/", t: "/transactions", s: "/subscriptions", r: "/reports" };
 

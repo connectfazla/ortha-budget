@@ -1,16 +1,25 @@
+import { CategoryProvider } from "@/components/categories/category-context";
 import { CommandPalette } from "@/components/command/command-palette";
 import { BottomBar } from "@/components/shell/bottom-bar";
 import { ServiceWorker } from "@/components/shell/service-worker";
 import { Sidebar } from "@/components/shell/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { getCategories, getClients, getContractors, getSettings, getUserEmail, requireUser } from "@/lib/data";
+import { getCategories, getCategoryOptions, getClients, getContractors, getSettings, getUserEmail, requireUser } from "@/lib/data";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   await requireUser();
-  const [contractors, categories, allClients, settings, email] = await Promise.all([getContractors(), getCategories(), getClients(), getSettings(), getUserEmail()]);
+  const [contractors, categories, categoryOptions, allClients, settings, email] = await Promise.all([
+    getContractors(),
+    getCategories(),
+    getCategoryOptions(),
+    getClients(),
+    getSettings(),
+    getUserEmail(),
+  ]);
   const clients = allClients.filter((c) => !c.archived);
   const base = settings.base_currency;
   return (
+    <CategoryProvider options={categoryOptions}>
     <TooltipProvider delay={400}>
       <div className="flex min-h-dvh">
         <Sidebar email={email} contractors={contractors} categories={categories} clients={clients} baseCurrency={base} />
@@ -24,5 +33,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <ServiceWorker />
       </div>
     </TooltipProvider>
+    </CategoryProvider>
   );
 }

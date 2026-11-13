@@ -9,7 +9,7 @@ const sans = Geist({ variable: "--font-sans-ui", subsets: ["latin"] });
 const mono = Geist_Mono({ variable: "--font-mono-ui", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "Ortha Budget", template: "%s · Ortha Budget" },
+  title: { default: "Budget Ortha", template: "%s · Budget Ortha" },
   description: "Mobile-first budget tracker for agencies: subscriptions, lifetime deals, contractors and expenses.",
   appleWebApp: { capable: true, title: "Budget", statusBarStyle: "default" },
   // Next 16 renders appleWebApp.capable as the generic mobile-web-app-capable; older iOS only reads the apple- name.

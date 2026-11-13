@@ -24,7 +24,7 @@ const noop = () => () => {};
 export function CalendarFeed({ token }: { token: string | null }) {
   const [pending, start] = useTransition();
   const [confirmReset, setConfirmReset] = useState(false);
-  // window is missing during SSR; reading it in render crashed the server pass of /settings.
+  // window is missing during SSR; reading it in render crashed the server pass of the settings page.
   const origin = useSyncExternalStore(noop, () => window.location.origin, () => "");
   const run = (on: boolean, msg: string) =>
     start(async () => {

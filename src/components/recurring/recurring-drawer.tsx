@@ -4,6 +4,8 @@ import { useId, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { XIcon } from "lucide-react";
 import { baseRate, useDesktop } from "@/components/entry/fx";
+import { CategoryPicker } from "@/components/categories/category-picker";
+import { useCategoryOptions } from "@/components/categories/category-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
@@ -31,7 +33,6 @@ export function RecurringDrawer({
   item,
   contractors,
   clients,
-  categories,
   today,
   priceChanges,
   baseCurrency = "USD",
@@ -42,7 +43,8 @@ export function RecurringDrawer({
   contractors: Contractor[];
   /** Active clients for the optional Client row. Omit and the row is hidden. */
   clients?: Client[];
-  categories: string[];
+  /** @deprecated Unused: categories come from useCategoryOptions(). Kept optional so callers compile. */
+  categories?: string[];
   today: string;
   /** Price history for `item`, newest first. */
   priceChanges?: PriceChange[];
@@ -67,7 +69,6 @@ export function RecurringDrawer({
           item={item}
           contractors={contractors}
           clients={clients}
-          categories={categories}
           today={today}
           priceChanges={priceChanges}
           base={baseCurrency}
@@ -82,7 +83,6 @@ function Form({
   item,
   contractors,
   clients,
-  categories,
   today,
   priceChanges,
   base,
@@ -91,7 +91,6 @@ function Form({
   item: Recurring | null;
   contractors: Contractor[];
   clients?: Client[];
-  categories: string[];
   today: string;
   priceChanges?: PriceChange[];
   base: string;
@@ -121,6 +120,13 @@ function Form({
   const [interval, setInterval_] = useState<BillingInterval>(item?.billing_interval ?? "monthly");
   const [nextDue, setNextDue] = useState(item?.next_due ?? today);
   const [category, setCategory] = useState(item?.category ?? "Software");
+  const options = useCategoryOptions();
+
+  // Money in/out flips drop a category of the other side, then default to that side's first one.
+  function pickDirection(d: Direction) {
+    setDirection(d);
+    if (options.some((o) => o.name === category && o.direction !== d)) setCategory(d === "in" ? "Retainer" : "Software");
+  }
   const [status, setStatus] = useState<RecurringStatus>(item?.status ?? "active");
   const [contractor, setContractor] = useState(item?.contractor_id ?? "none");
   const [clientId, setClientId] = useState(item?.client_id ?? "none");
@@ -182,7 +188,7 @@ function Form({
         <ToggleGroup
           aria-label="Direction"
           value={[direction]}
-          onValueChange={(v) => v[0] && setDirection(v[0] as Direction)}
+          onValueChange={(v) => v[0] && pickDirection(v[0] as Direction)}
           spacing={0}
           variant="outline"
           className="grid w-full grid-cols-2"
@@ -266,12 +272,13 @@ function Form({
 
         <Field>
           <FieldLabel htmlFor={`${id}-cat`} className="label">Category</FieldLabel>
-          <Input id={`${id}-cat`} className="h-11" list={`${id}-cats`} value={category} onChange={(e) => setCategory(e.target.value)} />
-          <datalist id={`${id}-cats`}>
-            {categories.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
+          <CategoryPicker
+            id={`${id}-cat`}
+            value={category}
+            onChange={setCategory}
+            direction={direction}
+            className="h-11 w-full rounded-md border border-input bg-card px-2 focus-visible:border-ring/70 focus-visible:ring-ring/15 dark:bg-input/30"
+          />
         </Field>
         <Field>
           <FieldLabel id={`${id}-status`} className="label">Status</FieldLabel>

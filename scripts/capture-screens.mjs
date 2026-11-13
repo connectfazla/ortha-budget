@@ -75,6 +75,12 @@ await page.getByLabel("Password", { exact: true }).fill(`Demo-${randomUUID()}`);
 await page.getByRole("button", { name: "Create account" }).click();
 await page.waitForURL((u) => !u.pathname.startsWith("/sign-") && u.pathname !== "/welcome");
 
+// First run asks for the look first; keep light for the marketing shots.
+const look = page.getByRole("heading", { name: /How should Budget Ortha look/ });
+if (await look.isVisible({ timeout: 5_000 }).catch(() => false)) {
+  await page.getByRole("radio", { name: /Light/ }).or(page.getByRole("button", { name: /^Light/ })).first().click();
+  await page.getByRole("button", { name: "Continue" }).click();
+}
 await page.getByRole("button", { name: "Load sample data" }).click();
 await page.getByRole("heading", { name: "Know what you owe before it is due." }).waitFor({ state: "detached", timeout: 30_000 });
 

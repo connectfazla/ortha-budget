@@ -103,6 +103,9 @@ export type Attachment = {
   created_at: string;
 };
 
+/** A category as shown in pickers: fixed ones from CATEGORIES plus the user's custom ones. */
+export type CategoryOption = { name: string; direction: Direction; icon: string | null; custom: boolean; id?: string };
+
 export type Budget = {
   id: string;
   category: string;

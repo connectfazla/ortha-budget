@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, BarChart3, ChevronRight, PiggyBank } from "lucide-react";
 import { CashChart } from "@/components/dashboard/cash-chart";
 import { ForecastCard } from "@/components/dashboard/forecast-card";
 import { MonthSwitcher, monthLabel, shiftMonth } from "@/components/dashboard/month-switcher";
@@ -15,7 +15,7 @@ import { formatMoney, isMonthKey, ltdPaybackMonths, monthKey, todayISO } from "@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription } from "@/components/ui/empty";
-import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from "@/components/ui/item";
+import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
@@ -135,6 +135,31 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           </CardContent>
         </Card>
 
+        {/* Reports and Budgets left the tab bar for Profile; keep one tap to each on phones [Revolut Business Home quick actions]. Desktop has them in the sidebar. */}
+        <nav aria-label="Insights" className="grid grid-cols-2 gap-3 lg:hidden">
+          {[
+            { href: "/reports", label: "Reports", icon: BarChart3 },
+            { href: "/budgets", label: "Budgets", icon: PiggyBank },
+          ].map((q) => (
+            <Item
+              key={q.href}
+              size="sm"
+              render={<Link href={q.href} />}
+              className="bg-card shadow-card focus-visible:ring-ring/60 press min-h-12 rounded-lg border-0 px-3 focus-visible:ring-2"
+            >
+              <ItemMedia variant="icon" className="text-muted-foreground">
+                <q.icon className="size-4" aria-hidden />
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle>{q.label}</ItemTitle>
+              </ItemContent>
+              <ItemActions>
+                <ChevronRight className="text-muted-foreground size-4" aria-hidden />
+              </ItemActions>
+            </Item>
+          ))}
+        </nav>
+
         <ForecastCard items={fc.items} today={today} cutoffs={cutoffs} currency={base} />
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
@@ -148,7 +173,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                 </>
               ) : (
                 <p className="text-muted-foreground text-sm">
-                  Not set. <Link href="/settings" className="text-brand focus-visible:ring-ring/60 rounded-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-2">Set a tax %</Link>
+                  Not set. <Link href="/profile/money" className="text-brand focus-visible:ring-ring/60 rounded-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-2">Set a tax %</Link>
                 </p>
               )}
             </CardContent>
@@ -158,7 +183,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             <CardContent>
               {cash === null ? (
                 <p className="text-sm">
-                  <Link href="/settings" className="text-brand focus-visible:ring-ring/60 rounded-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-2">Add your cash balance</Link>
+                  <Link href="/profile/money" className="text-brand focus-visible:ring-ring/60 rounded-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-2">Add your cash balance</Link>
                   <span className="text-muted-foreground"> to see your runway.</span>
                 </p>
               ) : (

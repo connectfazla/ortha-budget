@@ -84,10 +84,10 @@ export function buildCalendar(rows: FeedRow[], now = new Date()) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Ortha Budget//Renewals//EN",
+    "PRODID:-//Budget Ortha//Renewals//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:Ortha Budget renewals",
+    "X-WR-CALNAME:Budget Ortha renewals",
   ];
   for (const r of rows) {
     const amt = money(r.amount, r.currency);

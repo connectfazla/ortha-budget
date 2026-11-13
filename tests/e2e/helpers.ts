@@ -25,8 +25,11 @@ export async function pickSelect(page: Page, scope: Locator, label: string, opti
 export type EntryOpts = {
   description: string;
   amount: string;
-  kind?: "Subscription" | "One-time" | "Lifetime deal" | "Contractor" | "Expense" | "Income";
+  kind?: "Subscription" | "One-time purchase" | "Lifetime deal" | "Contractor" | "Expense" | "Income";
+  /** A category already in the picker (fixed or custom). */
   category?: string;
+  /** Create this custom category from the picker and select it. */
+  newCategory?: string;
   currency?: string;
   fx?: string;
   client?: string;
@@ -53,12 +56,40 @@ export async function fillEntry(page: Page, dialog: Locator, o: EntryOpts) {
   }
   await dialog.getByLabel(/^Amount in /).fill(o.amount); // sr-only "Amount in USD" label on the big amount input
   await dialog.getByLabel("Description").fill(o.description);
-  if (o.category) await dialog.getByLabel("Category", { exact: true }).fill(o.category);
+  if (o.category) await pickCategory(page, dialog, o.category);
+  if (o.newCategory) await addCustomCategory(page, dialog, o.newCategory);
   if (o.replaces) await dialog.getByLabel("Replaces a month").fill(o.replaces);
   if (o.client) await pickSelect(page, dialog, "Client", o.client);
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(toast(page, "Added")).toBeVisible();
   await expect(dialog).toBeHidden();
+}
+
+/**
+ * Category picker (src/components/categories/category-picker.tsx): the trigger is named "Category, <value>" and opens
+ * a nested "Category" sheet whose tiles are toggle buttons named after the category.
+ */
+export async function openCategories(page: Page, scope: Locator) {
+  await scope.getByRole("button", { name: /^Category, / }).click();
+  const sheet = page.getByRole("dialog", { name: "Category", exact: true });
+  await expect(sheet).toBeVisible();
+  return sheet;
+}
+
+export async function pickCategory(page: Page, scope: Locator, name: string) {
+  const sheet = await openCategories(page, scope);
+  await sheet.getByRole("button", { name, exact: true }).click();
+  await expect(sheet).toBeHidden();
+  await expect(scope.getByRole("button", { name: `Category, ${name}` })).toBeVisible();
+}
+
+export async function addCustomCategory(page: Page, scope: Locator, name: string) {
+  const sheet = await openCategories(page, scope);
+  await sheet.getByRole("button", { name: "Custom category" }).click();
+  await sheet.getByLabel("New category name").fill(name);
+  await sheet.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(sheet).toBeHidden();
+  await expect(scope.getByRole("button", { name: `Category, ${name}` })).toBeVisible();
 }
 
 /** Add an entry from wherever you are. */

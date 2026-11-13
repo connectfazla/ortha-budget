@@ -10,6 +10,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { CheckIcon, FileUpIcon, TriangleAlertIcon } from "lucide-react";
 import { importTransactions } from "@/lib/actions";
+import { useCategoryOptions } from "@/components/categories/category-context";
 import { Money } from "@/components/money";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -60,7 +61,17 @@ export function ImportFlow({ baseCurrency: base = "USD" }: { baseCurrency?: stri
     setSigned(m.direction < 0);
   }
 
+  const options = useCategoryOptions();
   const built = file && mapping ? buildRows(file.headers, file.data, { own: file.own, mapping, signed, base }) : null;
+  // Category column: snap "software" to the picker's "Software" so imports group with entries made in the app,
+  // and give money in "Other income" instead of the outflow "Other". Unknown names import as written.
+  if (built) {
+    const byName = new Map(options.map((o) => [o.name.toLowerCase(), o.name]));
+    for (const r of built.rows) {
+      r.category = byName.get(r.category.trim().toLowerCase()) ?? r.category;
+      if (r.direction === "in" && r.category === "Other") r.category = "Other income";
+    }
+  }
   const ready = file && built && (file.own || (mapping!.date >= 0 && mapping!.description >= 0 && mapping!.amount >= 0));
 
   async function run() {
@@ -143,8 +154,8 @@ export function ImportFlow({ baseCurrency: base = "USD" }: { baseCurrency?: stri
         <input ref={input} type="file" accept=".csv,text/csv" className="sr-only" tabIndex={-1} aria-label="CSV file" onChange={(e) => void pick(e.target.files?.[0])} />
         {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}
         <p className="text-muted-foreground text-sm">
-          A file exported from Ortha Budget imports as is. Any other file gets a column mapping step before anything is saved.
-          Amounts in {base} import as they are. Other currencies need an exchange rate, which only an Ortha Budget export
+          A file exported from Budget Ortha imports as is. Any other file gets a column mapping step before anything is saved.
+          Amounts in {base} import as they are. Other currencies need an exchange rate, which only an Budget Ortha export
           carries, so those rows are skipped.
         </p>
       </div>
@@ -162,7 +173,7 @@ export function ImportFlow({ baseCurrency: base = "USD" }: { baseCurrency?: stri
       </div>
 
       {file.own ? (
-        <p className="bg-muted rounded-md px-3 py-2 text-sm">This is an Ortha Budget export, so the columns are matched automatically.</p>
+        <p className="bg-muted rounded-md px-3 py-2 text-sm">This is an Budget Ortha export, so the columns are matched automatically.</p>
       ) : (
         <section aria-labelledby="map-h" className="space-y-3">
           <h2 id="map-h" className="text-sm font-medium">Match your columns</h2>

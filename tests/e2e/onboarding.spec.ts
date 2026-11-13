@@ -5,6 +5,14 @@ import { toast } from "./helpers";
 test("first run shows on an empty account and sample data fills the dashboard", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+  // Screen 1 asks for a theme once per browser (src/components/onboarding/first-run.tsx); only on an empty account.
+  const themeAsk = page.getByRole("heading", { name: "How should Budget Ortha look?" });
+  if (await themeAsk.isVisible()) {
+    await page.getByRole("button", { name: "Dark" }).click();
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(themeAsk).toBeHidden();
+  }
   const firstRun = page.getByRole("heading", { name: "Know what you owe before it is due." });
   test.skip(!(await firstRun.isVisible()), "account already has data, first-run is only shown on an empty account");
 

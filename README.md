@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="src/app/icon.svg" width="72" height="72" alt="Ortha Budget logo: a split ring, ink half for money in, indigo half for money out" />
+<img src="src/app/icon.svg" width="72" height="72" alt="Budget Ortha logo: a split ring, ink half for money in, indigo half for money out" />
 
-# Ortha Budget
+# Budget Ortha
 
 **A pocket ledger for your agency.**
 Track tools, retainers, contractor pay and profit per client, in any currency.
@@ -19,7 +19,7 @@ Track tools, retainers, contractor pay and profit per client, in any currency.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/welcome-dark.webp" />
-  <img src="docs/screenshots/welcome-light.webp" alt="Ortha Budget welcome page with the dashboard shown on an iPhone" width="100%" />
+  <img src="docs/screenshots/welcome-light.webp" alt="Budget Ortha welcome page with the dashboard shown on an iPhone" width="100%" />
 </picture>
 
 </div>
@@ -28,7 +28,7 @@ Track tools, retainers, contractor pay and profit per client, in any currency.
 
 Agency money is lumpy. Some tools bill monthly, some yearly, and one was a lifetime deal you bought two years ago. Retainers land on different days. Contractors want paying in their own currency. A spreadsheet holds all of that until the day it doesn't.
 
-Ortha Budget keeps each of those as its own kind of entry and answers three questions from your phone: what is due, what do you owe, and which clients make you money.
+Budget Ortha keeps each of those as its own kind of entry and answers three questions from your phone: what is due, what do you owe, and which clients make you money.
 
 ## Screens
 

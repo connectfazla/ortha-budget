@@ -1,14 +1,16 @@
 import { expect, test } from "@playwright/test";
-import { addEntry, toast, uid } from "./helpers";
+import { addEntry, openCategories, pickCategory, toast, uid } from "./helpers";
 
-test("set a budget and see the bar", async ({ page }) => {
+test("custom category: create it in the + sheet, budget it, then delete it", async ({ page }) => {
   const category = uid("cat");
   await page.goto("/transactions");
-  await addEntry(page, { description: `${category}-spend`, amount: "40", category }); // makes the category selectable
+  await addEntry(page, { description: `${category}-spend`, amount: "40", newCategory: category });
+
+  // The new category is selectable everywhere a category is picked, e.g. the budget drawer.
   await page.goto("/budgets");
   await page.getByRole("button", { name: /^(Add )?budget$/i }).first().click();
   const dialog = page.getByRole("dialog", { name: "New budget" });
-  await dialog.getByLabel("Category").selectOption(category); // native <select>
+  await pickCategory(page, dialog, category);
   await dialog.getByLabel(/^Limit per month/).fill("100");
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(toast(page, "Budget saved")).toBeVisible();
@@ -17,6 +19,19 @@ test("set a budget and see the bar", async ({ page }) => {
   await expect(row).toContainText("$60 left");
   await expect(row).toContainText("$40 of $100");
   await expect(page.getByRole("progressbar", { name: "Spent of total budget" })).toBeVisible();
+
+  // Tidy up: delete it from the picker's tile menu (entries keep the name, so the budget row stays).
+  await page.getByRole("button", { name: /^(Add )?budget$/i }).first().click();
+  const sheet = await openCategories(page, page.getByRole("dialog", { name: "New budget" }));
+  await sheet.getByRole("button", { name: `Options for ${category}` }).click();
+  await page.getByRole("menuitem", { name: "Delete category" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(toast(page, `Removed ${category}`)).toBeVisible();
+  await expect(sheet.getByRole("button", { name: category, exact: true })).toBeHidden();
+  await page.keyboard.press("Escape"); // close the picker, then the drawer; while open they hide the page from a11y
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(row).toBeVisible();
 });
 
 test("reports range switch", async ({ page }) => {

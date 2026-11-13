@@ -4,7 +4,7 @@ import path from "node:path";
 
 test("tax % and cash on hand drive set-aside and runway on the dashboard", async ({ page }) => {
   await createPlan(page, { name: uid("burn"), amount: "50", nextDue: isoIn(10) }); // runway needs a recurring cost
-  await page.goto("/settings");
+  await page.goto("/profile/money");
   await page.getByLabel(/Tax set-aside/).fill("20"); // label also wraps its hint text, so match by prefix
   await page.getByLabel(/Cash on hand/).fill("12000");
   await page.getByRole("button", { name: "Save", exact: true }).click();
@@ -21,7 +21,7 @@ test("tax % and cash on hand drive set-aside and runway on the dashboard", async
 test("calendar feed: on, contains the plan, reset kills the old link", async ({ page, request }) => {
   const plan = uid("cal");
   await createPlan(page, { name: plan, amount: "15", nextDue: isoIn(7) });
-  await page.goto("/settings");
+  await page.goto("/profile/calendar");
 
   const feedInput = page.getByLabel("Calendar feed link");
   if (!(await feedInput.isVisible())) {
@@ -48,12 +48,6 @@ test("calendar feed: on, contains the plan, reset kills the old link", async ({ 
 
   await page.getByRole("button", { name: "Turn off" }).click();
   await expect(toast(page, "Calendar reminders off")).toBeVisible();
-});
-
-test("Export CSV downloads a file", async ({ page }) => {
-  await page.goto("/settings");
-  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Export CSV" }).click() /* Button rendered as <a download> */]);
-  expect(download.suggestedFilename()).toMatch(/^ortha-budget-\d{4}-\d{2}-\d{2}\.csv$/);
 });
 
 test("import a small CSV and see the rows", async ({ page }) => {

@@ -103,8 +103,10 @@
   }
 }
 
-/* Every colour is light-dark(light, dark); `color-scheme` on :root and .dark picks the side. */
-:root {
+/* Every colour is light-dark(light, dark); `color-scheme` on :root and .dark picks the side.
+   .theme-scope re-declares the tokens on an element (theme preview tiles) so .light/.dark on it can force a palette. */
+:root,
+.theme-scope {
   color-scheme: light;
 
   --dur-instant: 90ms;
@@ -173,6 +175,10 @@
 
 .dark {
   color-scheme: dark;
+}
+
+.theme-scope.light {
+  color-scheme: light;
 }
 
 @media (prefers-reduced-motion: reduce) {

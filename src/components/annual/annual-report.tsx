@@ -115,7 +115,7 @@ export function AnnualReport({ a, minYear, maxYear, generated }: { a: Annual; mi
             ) : (
               <p className="text-muted-foreground text-sm">
                 No tax rate saved.{" "}
-                <Link href="/settings" className="text-foreground focus-visible:ring-ring/60 rounded-sm underline underline-offset-2 outline-none focus-visible:ring-2 print:hidden">
+                <Link href="/profile/money" className="text-foreground focus-visible:ring-ring/60 rounded-sm underline underline-offset-2 outline-none focus-visible:ring-2 print:hidden">
                   Set a tax %
                 </Link>
               </p>

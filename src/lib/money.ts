@@ -18,21 +18,33 @@ export const INTERVALS: Record<BillingInterval, { label: string; perMonth: numbe
   yearly: { label: "Yearly", perMonth: 1 / 12 },
 };
 
-export const DEFAULT_CATEGORIES = [
-  "Software",
-  "Hosting",
-  "Design tools",
-  "AI",
-  "Marketing",
-  "Contractors",
-  "Office",
-  "Hardware",
-  "Legal & admin",
-  "Taxes & fees",
-  "Travel",
-  "Client work",
-  "Other",
-];
+/**
+ * The fixed category set every account starts with. `icon` is a lucide icon name (mapped in the category picker).
+ * People add their own on top (categories table); names here never change, so old entries keep matching.
+ */
+export const CATEGORIES = [
+  { name: "Software", direction: "out", icon: "app-window" },
+  { name: "Hosting", direction: "out", icon: "server" },
+  { name: "Design tools", direction: "out", icon: "pen-tool" },
+  { name: "AI", direction: "out", icon: "sparkles" },
+  { name: "Marketing", direction: "out", icon: "megaphone" },
+  { name: "Contractors", direction: "out", icon: "users" },
+  { name: "Office", direction: "out", icon: "building-2" },
+  { name: "Hardware", direction: "out", icon: "laptop" },
+  { name: "Legal & admin", direction: "out", icon: "scale" },
+  { name: "Taxes & fees", direction: "out", icon: "landmark" },
+  { name: "Bank fees", direction: "out", icon: "credit-card" },
+  { name: "Travel", direction: "out", icon: "plane" },
+  { name: "Meals", direction: "out", icon: "utensils" },
+  { name: "Education", direction: "out", icon: "graduation-cap" },
+  { name: "Other", direction: "out", icon: "circle-ellipsis" },
+  { name: "Client work", direction: "in", icon: "briefcase" },
+  { name: "Retainer", direction: "in", icon: "repeat" },
+  { name: "Product sales", direction: "in", icon: "shopping-bag" },
+  { name: "Other income", direction: "in", icon: "circle-plus" },
+] as const satisfies readonly { name: string; direction: Direction; icon: string }[];
+
+export const DEFAULT_CATEGORIES: string[] = CATEGORIES.map((c) => c.name);
 
 export function monthlyEquivalent(amountUsd: number, interval: BillingInterval) {
   return round2(amountUsd * INTERVALS[interval].perMonth);

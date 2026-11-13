@@ -1,4 +1,4 @@
-// Ortha Budget service worker: Web Push only. No fetch handler and no caching, so it never serves stale pages.
+// Budget Ortha service worker: Web Push only. No fetch handler and no caching, so it never serves stale pages.
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
@@ -13,7 +13,7 @@ self.addEventListener("push", (event) => {
   } catch {
     msg = { body: event.data ? event.data.text() : "" };
   }
-  const shown = self.registration.showNotification(msg.title || "Ortha Budget", {
+  const shown = self.registration.showNotification(msg.title || "Budget Ortha", {
     body: msg.body || "",
     tag: msg.tag || undefined,
     data: { url: safePath(msg.url) },

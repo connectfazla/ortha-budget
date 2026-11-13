@@ -1,6 +1,6 @@
 # Build notes for agents (read fully before coding)
 
-App: Ortha Budget. A mobile-first budget tracker for agencies/freelancers. Next.js 16.4 (App Router, `src/`), React 19.3, Tailwind v4, shadcn v4 on **Base UI** (not Radix), **Supabase Auth** (email + password, cookie session via `@supabase/ssr`), Supabase Postgres with RLS keyed on `auth.jwt() ->> 'sub'` (the Supabase user id). Open-source repo: never put personal data, real names, keys or emails in code, comments or fixtures.
+App: Budget Ortha. A mobile-first budget tracker for agencies/freelancers. Next.js 16.4 (App Router, `src/`), React 19.3, Tailwind v4, shadcn v4 on **Base UI** (not Radix), **Supabase Auth** (email + password, cookie session via `@supabase/ssr`), Supabase Postgres with RLS keyed on `auth.jwt() ->> 'sub'` (the Supabase user id). Open-source repo: never put personal data, real names, keys or emails in code, comments or fixtures.
 
 ## Must-read
 - `docs/DESIGN-BRIEF.md`: the Mobbin-grounded layout per screen. Its OVERRIDE section is **superseded by v2 below**.
@@ -54,3 +54,8 @@ All app pages live in `src/app/(app)/…`. `src/app/(app)/layout.tsx` (the shell
   View with `receiptUrl(path)` (a 60s signed URL); delete with `deleteReceipt(id)`. Read with `getAttachments(txnId)` and `getAttachmentCounts()`. Allowed: jpg/png/webp/heic/pdf, ≤10 MB.
 - **Price history:** a DB trigger logs every `recurring.amount` change to `price_changes`. Read it with `getPriceChanges(recurringId?)`.
 - **Cancel-by:** `recurring.cancel_by` (date). `RecurringInput.cancel_by` accepts it, and `calendar_feed` returns it.
+
+## Wave 5 (coordinator-owned core)
+- The product is now named **Budget Ortha** (logo: "Budget" sans semibold plus "Ortha" mono muted). Never write "Ortha Budget".
+- **Categories:** a fixed set lives in `CATEGORIES` (src/lib/money.ts), with `direction` and a lucide `icon` name. Users add custom ones in the `categories` table: `addCategory(name, direction)` and `deleteCategory(id)`. `getCategoryOptions()` returns fixed plus custom as `CategoryOption[]`. In client components, read them with `useCategoryOptions()` from src/components/categories/category-context.tsx (provided by the (app) layout). `getCategories()` still returns names only.
+- **Subscriptions from the + sheet:** `createSubscription(recurringInput, paidToday, todayISO)` creates a real `recurring` plan. With `paidToday` it also logs this period's payment via `mark_recurring_paid`.

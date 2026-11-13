@@ -1,28 +1,43 @@
 "use client";
 
 // CONTRACT (owned by the Transactions builder; the shell imports it):
-// <AddEntryDrawer contractors={...} categories={...} defaultKind? transaction?>{trigger}</AddEntryDrawer>
+// <AddEntryDrawer contractors={...} defaultKind? transaction?>{trigger}</AddEntryDrawer>
 // - children: the trigger element (rendered via the drawer's Trigger `render` prop).
 // - transaction: when set, the drawer edits that row instead of creating one.
 // Layout: brief §2 [YNAB-ADD][GOPAY-ADD][CASH-AMT][BINANCE-AMT][BREX-ADD].
+// New subscriptions (and income set to repeat, i.e. retainers) save as real plans via createSubscription:
+// Repeats / Next charge / Paid today rows follow Orbit "Add Subscription" (Payment date, Billing cycle, Free trial
+// switch in one grouped list) and Monzo "How often does this payment repeat?" (Weekly to Yearly).
 
 import { useEffect, useId, useRef, useState, useTransition, type ReactElement } from "react";
 import { toast } from "sonner";
-import { Trash2Icon, XIcon } from "lucide-react";
-import { createTransaction, deleteTransaction, updateTransaction, type TransactionInput } from "@/lib/actions";
-import { CURRENCIES, KINDS, formatMoney, round2 } from "@/lib/money";
-import type { Client, Contractor, Direction, Transaction, TxnKind } from "@/lib/types";
+import { RepeatIcon, Trash2Icon, XIcon } from "lucide-react";
+import {
+  createSubscription,
+  createTransaction,
+  deleteTransaction,
+  updateTransaction,
+  type RecurringInput,
+  type TransactionInput,
+} from "@/lib/actions";
+import { CURRENCIES, INTERVALS, KINDS, formatMoney, round2 } from "@/lib/money";
+import type { BillingInterval, Client, Contractor, Direction, Transaction, TxnKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Switch } from "@/components/ui/switch";
+import { CategoryPicker } from "@/components/categories/category-picker";
+import { useCategoryOptions } from "@/components/categories/category-context";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
 import { Receipts } from "@/components/receipts/receipts";
 import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { baseRate, useDesktop } from "./fx";
+import { addInterval, shortDay } from "./interval";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
@@ -39,7 +54,8 @@ import {
 export type AddEntryDrawerProps = {
   children: ReactElement;
   contractors: Contractor[];
-  categories: string[];
+  /** @deprecated Unused: categories come from useCategoryOptions(). Kept optional so callers compile. */
+  categories?: string[];
   defaultKind?: TxnKind;
   /** Pre-pick this contractor (new contractor payouts from a contractor's page). */
   defaultContractorId?: string;
@@ -52,7 +68,18 @@ export type AddEntryDrawerProps = {
   baseCurrency?: string;
 };
 
-const KIND_KEYS = Object.keys(KINDS) as TxnKind[];
+// Sheet order and labels: the everyday type first, and "repeats" vs "once" spelled out (owner feedback).
+const KIND_KEYS: TxnKind[] = ["expense", "subscription", "one_time", "lifetime", "contractor", "income"];
+const kindLabel = (k: TxnKind) => (k === "one_time" ? "One-time purchase" : KINDS[k].label);
+const KIND_HINT: Record<TxnKind, string> = {
+  expense: "A single cost, logged on its date.",
+  subscription: "Repeats. Saves a plan under Subscriptions with renewal reminders.",
+  one_time: "Paid once. No renewals.",
+  lifetime: "Paid once for lasting access. Shows payback against what it replaces.",
+  contractor: "A payout to someone on your Contractors list.",
+  income: "Money in. Set Repeats for a retainer.",
+};
+type Repeat = BillingInterval | "never";
 
 const num = (s: string) => Number(s.replace(/,/g, "").trim());
 const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
@@ -75,7 +102,6 @@ export function AddEntryDrawer({ children, ...props }: AddEntryDrawerProps) {
 
 function EntryForm({
   contractors,
-  categories,
   defaultKind = "expense",
   defaultContractorId,
   clients,
@@ -102,6 +128,14 @@ function EntryForm({
   const [clientId, setClientId] = useState<string>(t?.client_id ?? defaultClientId ?? "none");
   const [showErrors, setShowErrors] = useState(false);
   const latestCurrency = useRef(currency);
+  const options = useCategoryOptions();
+  // Repeating entries (new only): a subscription always repeats; income repeats when set (a retainer).
+  const [repeat, setRepeat] = useState<Repeat>(defaultKind === "subscription" ? "monthly" : "never");
+  const [nextCharge, setNextCharge] = useState(""); // "" = auto: today plus one interval
+  const [paidToday, setPaidToday] = useState(true);
+  const repeatable = !t && (kind === "subscription" || kind === "income");
+  const isPlan = repeatable && repeat !== "never";
+  const nextDue = repeat === "never" ? "" : nextCharge || addInterval(today(), repeat);
 
   // Prefill the FX rate once when the form opens on a preset contractor paid in another currency.
   const presetCurrency = preset?.currency;
@@ -119,8 +153,22 @@ function EntryForm({
     amount: !(amountN > 0) ? "Enter an amount above 0" : null,
     fx: !isBase && !(fxN > 0) ? `Enter what 1 ${currency} is in ${base}` : null,
     description: !description.trim() ? "Description is required" : null,
+    next: isPlan && !nextDue ? "Pick the next charge date" : null,
   };
-  const firstError = errors.amount ?? errors.fx ?? errors.description;
+  const firstError = errors.amount ?? errors.fx ?? errors.description ?? errors.next;
+
+  // Switching money in/out drops a category that belongs to the other side (Software makes no sense on income).
+  function pickDirection(d: Direction) {
+    setDirection(d);
+    if (options.some((o) => o.name === category && o.direction !== d)) setCategory("");
+  }
+
+  function pickKind(k: TxnKind) {
+    setKind(k);
+    pickDirection(KINDS[k].direction);
+    if (k === "subscription" && repeat === "never") setRepeat("monthly");
+    if (k === "income") setRepeat("never");
+  }
 
   function pickCurrency(cur: string) {
     latestCurrency.current = cur;
@@ -156,17 +204,45 @@ function EntryForm({
       currency,
       fx_rate: fxN,
       description: description.trim(),
-      category: category.trim(),
+      category: category || (direction === "in" ? "Other income" : "Other"),
       vendor: vendor.trim() || null,
       contractor_id: kind === "contractor" ? contractorId : null,
       client_id: clientId === "none" ? null : clientId,
       replaces_monthly: kind === "lifetime" && replaces.trim() ? num(replaces) : null,
       notes: notes.trim() || null,
     };
+    if (isPlan) return savePlan(input, repeat as BillingInterval);
     startTransition(async () => {
       const res = t ? await updateTransaction(t.id, input) : await createTransaction(input);
       if (!res.ok) return void toast.error(res.error);
       toast.success(t ? "Saved" : "Added");
+      onDone();
+    });
+  }
+
+  function savePlan(i: TransactionInput, interval: BillingInterval) {
+    const plan: RecurringInput = {
+      name: i.description,
+      vendor: i.vendor,
+      direction: i.direction,
+      amount: i.amount,
+      currency: i.currency,
+      fx_rate: i.fx_rate,
+      billing_interval: interval,
+      // Paid today: mark_recurring_paid logs today's payment and moves next_due on by one interval, so start one back.
+      // ponytail: a custom next date on the 29th-31st can land 1-3 days early after the round trip; send next_due
+      // straight through once createSubscription takes the date it should end on.
+      next_due: paidToday ? (nextCharge ? addInterval(nextCharge, interval, -1) : today()) : nextDue,
+      category: i.category,
+      status: "active",
+      client_id: i.client_id,
+      notes: i.notes,
+    };
+    startTransition(async () => {
+      const res = await createSubscription(plan, paidToday, today());
+      if (!res.ok) return void toast.error(res.error);
+      const what = i.direction === "in" ? "payment" : "charge";
+      toast.success(`Added ${plan.name}${paidToday ? ` and logged today’s ${what}` : ""}. Next ${what} ${shortDay(nextDue)}`);
       onDone();
     });
   }
@@ -210,29 +286,31 @@ function EntryForm({
             value={[kind]}
             onValueChange={(v) => {
               const k = v[0] as TxnKind | undefined;
-              if (!k) return; // keep one pressed
-              setKind(k);
-              setDirection(KINDS[k].direction);
+              if (k) pickKind(k); // ignore the deselect, keep one pressed
             }}
             className="w-max gap-1.5 px-4 pb-2.5"
           >
             {KIND_KEYS.map((k) => (
               <ToggleGroupItem key={k} value={k} className={CHIP}>
-                {KINDS[k].label}
+                {k === "subscription" ? <RepeatIcon aria-hidden /> : null}
+                {kindLabel(k)}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
+        <p className="text-xs text-muted-foreground">
+          {t && kind === "subscription" ? "Edits this one charge. The plan itself lives under Subscriptions." : KIND_HINT[kind]}
+        </p>
 
         {/* Outflow / Inflow [YNAB-ADD]: separate because a retainer is an "in" subscription. */}
         <ToggleGroup
           aria-label="Direction"
           value={[direction]}
-          onValueChange={(v) => v[0] && setDirection(v[0] as Direction)}
+          onValueChange={(v) => v[0] && pickDirection(v[0] as Direction)}
           spacing={0}
           variant="outline"
-          className="mt-1 grid w-full grid-cols-2"
+          className="mt-3 grid w-full grid-cols-2"
         >
           <ToggleGroupItem value="out" className={SEGMENT}>
             Outflow
@@ -369,20 +447,7 @@ function EntryForm({
             <FieldLabel htmlFor={`${id}-cat`} className={ROW_LABEL}>
               Category
             </FieldLabel>
-            <Input
-              id={`${id}-cat`}
-              list={`${id}-cats`}
-              maxLength={60}
-              placeholder="Other"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className={FIELD}
-            />
-            <datalist id={`${id}-cats`}>
-              {categories.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
+            <CategoryPicker id={`${id}-cat`} value={category} onChange={setCategory} direction={direction} className="h-12 flex-1 justify-end" />
           </Field>
           <Field orientation="horizontal" className={ROW}>
             <FieldLabel htmlFor={`${id}-vendor`} className={ROW_LABEL}>
@@ -397,12 +462,57 @@ function EntryForm({
               className={FIELD}
             />
           </Field>
-          <Field orientation="horizontal" className={ROW}>
-            <FieldLabel htmlFor={`${id}-date`} className={ROW_LABEL}>
-              Date
-            </FieldLabel>
-            <Input id={`${id}-date`} type="date" required value={date} onChange={(e) => setDate(e.target.value)} className={FIELD} />
-          </Field>
+          {repeatable ? (
+            <Field orientation="horizontal" className={ROW}>
+              <FieldLabel htmlFor={`${id}-repeat`} className={ROW_LABEL}>
+                Repeats
+              </FieldLabel>
+              <NativeSelect
+                id={`${id}-repeat`}
+                value={repeat}
+                onChange={(e) => setRepeat(e.target.value as Repeat)}
+                className="min-w-0 flex-1 *:data-[slot=native-select]:h-12 *:data-[slot=native-select]:border-0 *:data-[slot=native-select]:bg-transparent *:data-[slot=native-select]:text-right *:data-[slot=native-select]:shadow-none dark:*:data-[slot=native-select]:bg-transparent"
+              >
+                {kind === "income" ? <NativeSelectOption value="never">Never</NativeSelectOption> : null}
+                {Object.entries(INTERVALS).map(([k, v]) => (
+                  <NativeSelectOption key={k} value={k}>
+                    {v.label}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </Field>
+          ) : null}
+          {isPlan ? (
+            <>
+              <Field orientation="horizontal" data-invalid={!!err("next")} className={ROW}>
+                <FieldLabel htmlFor={`${id}-next`} className={ROW_LABEL}>
+                  {direction === "in" ? "Next payment" : "Next charge"}
+                </FieldLabel>
+                <Input
+                  id={`${id}-next`}
+                  type="date"
+                  required
+                  value={nextDue}
+                  onChange={(e) => setNextCharge(e.target.value)}
+                  aria-invalid={!!err("next")}
+                  className={FIELD}
+                />
+              </Field>
+              <Field orientation="horizontal" className={ROW}>
+                <FieldLabel htmlFor={`${id}-paid`} className="label flex-1">
+                  {direction === "in" ? "Received today" : "Paid today"}
+                </FieldLabel>
+                <Switch id={`${id}-paid`} checked={paidToday} onCheckedChange={setPaidToday} />
+              </Field>
+            </>
+          ) : (
+            <Field orientation="horizontal" className={ROW}>
+              <FieldLabel htmlFor={`${id}-date`} className={ROW_LABEL}>
+                Date
+              </FieldLabel>
+              <Input id={`${id}-date`} type="date" required value={date} onChange={(e) => setDate(e.target.value)} className={FIELD} />
+            </Field>
+          )}
           {kind === "lifetime" ? (
             <Field orientation="horizontal" className={ROW}>
               <FieldLabel htmlFor={`${id}-repl`} className={ROW_LABEL}>
@@ -436,13 +546,15 @@ function EntryForm({
         </Card>
         <FieldError className="mt-1 text-xs">{err("description")}</FieldError>
 
-        {kind === "subscription" ? (
+        {isPlan ? (
           <p className="mt-3 text-xs text-muted-foreground">
-            This logs a single charge. Recurring plans with renewal dates live under Plans, then Subscriptions.
+            {paidToday
+              ? `Logs today’s ${direction === "in" ? "payment" : "charge"} now. The plan counts in Subscriptions, the forecast and reminders.`
+              : "The plan counts in Subscriptions, the forecast and reminders. Nothing is logged until you mark it paid."}
           </p>
-        ) : null}
-
-        <Receipts transactionId={t?.id} />
+        ) : (
+          <Receipts transactionId={t?.id} />
+        )}
 
         {t ? (
           <AlertDialog>
@@ -478,6 +590,8 @@ function EntryForm({
             </>
           ) : t ? (
             "Save changes"
+          ) : isPlan ? (
+            direction === "in" ? "Save retainer" : "Save subscription"
           ) : (
             "Save"
           )}

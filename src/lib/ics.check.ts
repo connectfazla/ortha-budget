@@ -27,7 +27,7 @@ const a = buildCalendar(rows, new Date("2026-11-13T00:00:00Z"));
 const b = buildCalendar(rows, new Date("2027-01-01T00:00:00Z"));
 assert.ok(a.startsWith("BEGIN:VCALENDAR\r\n") && a.endsWith("END:VCALENDAR\r\n"));
 assert.ok(!/[^\r]\n/.test(a), "bare LF");
-assert.ok(a.includes("X-WR-CALNAME:Ortha Budget renewals"));
+assert.ok(a.includes("X-WR-CALNAME:Budget Ortha renewals"));
 assert.ok(a.includes("SUMMARY:Figma Professional renews: $45.00"));
 assert.ok(a.includes("SUMMARY:Acme retainer expected payment: $2\\,400.00"));
 assert.ok(a.includes("SUMMARY:Notion Plus trial ends"));

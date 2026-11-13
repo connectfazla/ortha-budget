@@ -1,18 +1,18 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Device side of Web Push (src/app/(app)/settings/notifications.tsx, public/sw.js). Real delivery is not tested.
+// Device side of Web Push (src/app/(app)/profile/notifications.tsx, public/sw.js). Real delivery is not tested.
 
 // Headless Chromium always reports notifications as "denied", even when granted. Pretend nobody has been asked yet
 // so the "can enable" state renders; nothing is requested or subscribed.
 test.beforeEach(({ page }) => page.addInitScript(() => Object.defineProperty(Notification, "permission", { get: () => "default" })));
 
 /** Server actions POST back to the page; wait for the save to finish before the next step. */
-const saved = (page: Page) => page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/settings");
+const saved = (page: Page) => page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/profile/notifications");
 
 test("notifications section renders and preferences persist after a reload", async ({ page }) => {
-  await page.goto("/settings");
-  const card = page.locator("[data-slot=card]").filter({ has: page.getByRole("heading", { name: "Notifications" }) });
-  await expect(card).toBeVisible();
+  await page.goto("/profile/notifications");
+  await expect(page.getByRole("heading", { level: 1, name: "Notifications" })).toBeVisible();
+  const card = page.locator("main [data-slot=card]");
   // Desktop Chromium supports Web Push, so the device part offers the button. Nothing subscribes here.
   await expect(card.getByRole("button", { name: "Turn on notifications" })).toBeVisible();
 

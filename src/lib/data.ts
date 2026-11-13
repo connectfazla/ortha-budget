@@ -2,8 +2,8 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { DEFAULT_CATEGORIES, KINDS, addMonths, monthKey, monthRange, monthlyEquivalent, round2 } from "@/lib/money";
-import type { Attachment, Budget, Client, Contractor, PriceChange, UserSettings, Direction, MonthSummary, Recurring, Transaction, TxnKind } from "@/lib/types";
+import { CATEGORIES, KINDS, addMonths, monthKey, monthRange, monthlyEquivalent, round2 } from "@/lib/money";
+import type { Attachment, Budget, CategoryOption, Client, Contractor, PriceChange, UserSettings, Direction, MonthSummary, Recurring, Transaction, TxnKind } from "@/lib/types";
 
 /** Signed-in user id, or redirect to sign-in. Call at the top of every (app) page (the proxy also guards). */
 export const requireUser = cache(async () => {
@@ -127,16 +127,20 @@ export async function getBudgets(): Promise<Budget[]> {
   return data as Budget[];
 }
 
-/** Defaults plus every category already used, for pickers. */
-export const getCategories = cache(async (): Promise<string[]> => {
+/** Fixed categories plus the user's custom ones, with direction and icon, for the category picker. */
+export const getCategoryOptions = cache(async (): Promise<CategoryOption[]> => {
   const supabase = await createClient();
-  const [t, r] = await Promise.all([
-    supabase.from("transactions").select("category").limit(1000),
-    supabase.from("recurring").select("category"),
-  ]);
-  const used = [...(t.data ?? []), ...(r.data ?? [])].map((x) => x.category as string);
-  return [...new Set([...DEFAULT_CATEGORIES, ...used])].sort((a, b) => a.localeCompare(b));
+  const { data, error } = await supabase.from("categories").select("id, name, direction").order("name");
+  if (error) fail("Load categories", error);
+  const fixed: CategoryOption[] = CATEGORIES.map((c) => ({ name: c.name, direction: c.direction, icon: c.icon, custom: false }));
+  const custom: CategoryOption[] = (data ?? [])
+    .filter((c) => !CATEGORIES.some((f) => f.name.toLowerCase() === String(c.name).toLowerCase()))
+    .map((c) => ({ id: c.id as string, name: c.name as string, direction: c.direction as Direction, icon: null, custom: true }));
+  return [...fixed, ...custom];
 });
+
+/** Category names (fixed first, then custom) for filters and simple selects. */
+export const getCategories = cache(async (): Promise<string[]> => (await getCategoryOptions()).map((c) => c.name));
 
 export function summarize(month: string, txns: Transaction[], recurring: Recurring[]): MonthSummary {
   const byKind = Object.fromEntries(Object.keys(KINDS).map((k) => [k, 0])) as Record<TxnKind, number>;

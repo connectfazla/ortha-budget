@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient, currentUserId } from "@/lib/supabase/server";
-import { CURRENCIES, INTERVALS, KINDS } from "@/lib/money";
+import { CATEGORIES, CURRENCIES, INTERVALS, KINDS } from "@/lib/money";
 import type { ActionResult, BillingInterval, Direction, RateType, RecurringStatus, TxnKind } from "@/lib/types";
 
 // Server actions are a trust boundary: everything below is re-validated here, and RLS scopes rows to the user.
@@ -597,10 +597,42 @@ export async function sendTestPush(): Promise<ActionResult & { sent?: number }> 
   const { sendPush } = await import("@/lib/push/send");
   let sent = 0;
   for (const t of data) {
-    const r = await sendPush(t, { title: "Notifications are on", body: "You'll get renewals, trials and a daily reminder here.", url: "/settings", tag: "test", badge: 0 });
+    const r = await sendPush(t, { title: "Notifications are on", body: "You'll get renewals, trials and a daily reminder here.", url: "/profile/notifications", tag: "test", badge: 0 });
     if (r === "sent") sent++;
     if (r === "gone") await supabase.from("push_subscriptions").delete().eq("endpoint", t.endpoint);
   }
   return sent ? { ok: true, sent } : { ok: false, error: "Couldn't reach this device. Turn notifications off and on again." };
+}
+
+/* ---------- categories ---------- */
+
+export async function addCategory(name: string, direction: Direction = "out") {
+  return run(async () => {
+    const n = text(name, "Category", { required: true, max: 40 })!;
+    if (CATEGORIES.some((c) => c.name.toLowerCase() === n.toLowerCase())) throw new Invalid(`"${n}" is already a category`);
+    return (await createClient()).from("categories").insert({ name: n, direction: oneOf(direction, DIRECTIONS, "Direction") });
+  });
+}
+
+/** Removes a custom category from the picker. Entries that used it keep the name. */
+export async function deleteCategory(id: string) {
+  return run(async () => (await createClient()).from("categories").delete().eq("id", uuid(id, "id")));
+}
+
+/* ---------- subscriptions from the + sheet ---------- */
+
+/**
+ * Creates a recurring plan (so it counts as a subscription everywhere: Plans, forecast, reminders).
+ * With `paidToday`, also logs this period's payment and moves next_due on, in the same DB call as Mark paid.
+ */
+export async function createSubscription(input: RecurringInput, paidToday: boolean, today: string) {
+  return run(async () => {
+    const supabase = await createClient();
+    const row = parseRecurring(input, await baseCurrencyOf(supabase));
+    const { data, error } = await supabase.from("recurring").insert(row).select("id").single();
+    if (error) return { error };
+    if (!paidToday) return { error: null };
+    return supabase.rpc("mark_recurring_paid", { p_id: data.id, p_date: isoDate(today, "Date") });
+  });
 }
 

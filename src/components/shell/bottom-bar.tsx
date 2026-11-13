@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Home, ListOrdered, Plus, Repeat } from "lucide-react";
+import { Home, ListOrdered, Plus, Repeat, UserRound } from "lucide-react";
 import { AddEntryDrawer } from "@/components/entry/add-entry-drawer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,10 +12,11 @@ const starts = (p: string, ...prefixes: string[]) => prefixes.some((x) => p === 
 
 const TABS = [
   { href: "/", label: "Home", icon: Home, match: (p: string) => p === "/" },
-  { href: "/transactions", label: "Activity", icon: ListOrdered, match: (p: string) => starts(p, "/transactions") },
+  { href: "/transactions", label: "Transactions", icon: ListOrdered, match: (p: string) => starts(p, "/transactions") },
   null, // Add slot
   { href: "/subscriptions", label: "Plans", icon: Repeat, match: (p: string) => starts(p, "/subscriptions", "/lifetime", "/contractors", "/clients") },
-  { href: "/reports", label: "Reports", icon: BarChart3, match: (p: string) => starts(p, "/reports", "/budgets") },
+  // Profile also holds what used to be the Reports tab, plus import and the old /settings path [Chime Profile tab].
+  { href: "/profile", label: "Profile", icon: UserRound, match: (p: string) => starts(p, "/profile", "/reports", "/budgets", "/import", "/settings") },
 ];
 
 /** Mobile tab bar [YNAB-BUDGET]: 5 slots, raised square Add in the centre. Hidden on lg+. */

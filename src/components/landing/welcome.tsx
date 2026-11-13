@@ -30,7 +30,7 @@ export function Welcome() {
   return (
     <div className="landing bg-background text-foreground min-h-dvh">
       <header className={`${WRAP} flex h-14 items-center justify-between lg:h-16`}>
-        <Link href="/welcome" aria-label="Ortha Budget home" className="rounded-sm">
+        <Link href="/welcome" aria-label="Budget Ortha home" className="rounded-sm">
           <Logo />
         </Link>
         <nav className="flex items-center gap-6 text-[15px]">
@@ -50,7 +50,7 @@ export function Welcome() {
             <IPhone
               hero
               src="/landing/home.png"
-              alt="Ortha Budget home screen on an iPhone: $487 net in November, money in and out, and the payments coming up in the next 30 days"
+              alt="Budget Ortha home screen on an iPhone: $487 net in November, money in and out, and the payments coming up in the next 30 days"
               sizes="(min-width: 1024px) 296px, 278px"
               className="w-[300px] shrink-0 max-lg:[filter:none] lg:w-[320px]"
             />

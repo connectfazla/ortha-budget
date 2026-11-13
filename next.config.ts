@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }, { key: "Content-Type", value: "application/javascript; charset=utf-8" }] },
     ];
   },
+  // Settings became the Profile tab; old links, bookmarks and push payloads still land there.
+  async redirects() {
+    return [{ source: "/settings", destination: "/profile", permanent: true }];
+  },
   // Every page is per-user and reads auth cookies, so Cache Components / static prerender buy nothing here.
   turbopack: {
     root: __dirname,

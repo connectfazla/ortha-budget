@@ -1,4 +1,4 @@
-# Ortha Budget Tracker: Design Brief (Mobbin-grounded)
+# Budget Ortha Tracker: Design Brief (Mobbin-grounded)
 
 Cite keys in [brackets] resolve to the Refs table at the bottom (URLs exactly as Mobbin returned them).
 Honest gaps: Mobbin has NO lifetime-deal/ROI screen and no contractor-payout list. Those two are adapted from goal-progress and payee-history screens (flagged below).

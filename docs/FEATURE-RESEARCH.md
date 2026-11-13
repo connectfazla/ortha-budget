@@ -1,4 +1,4 @@
-# Ortha Budget: feature gaps vs market leaders (2026-11-13)
+# Budget Ortha: feature gaps vs market leaders (2026-11-13)
 
 Evidence quality: WebSearch only (no deep fetch of feature pages). Many "review" hits are competitor/affiliate blogs
 (Plutio, SubTracker, ReSubs, Gerald, unstar) and are flagged as weak. No direct Reddit threads surfaced. Treat user-value
