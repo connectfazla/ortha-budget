@@ -1,3 +1,4 @@
+import type { Viewport } from "next";
 import Link from "next/link";
 import { AlertTriangle, ArrowDownLeft, ArrowUpRight, BarChart3, Bell, PiggyBank, Plus, Repeat, Search, Upload } from "lucide-react";
 import { CashChart } from "@/components/dashboard/cash-chart";
@@ -18,6 +19,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription } from "@/components/ui/empty";
 import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { cn } from "@/lib/utils";
+
+// Safari tints its top bar with theme-color. On Home, match the top of the blue hero so the bar and the
+// gradient read as one surface (the installed app draws behind the status bar instead; see layout appleWebApp).
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#3a6dff" },
+    { media: "(prefers-color-scheme: dark)", color: "#2453f0" },
+  ],
+};
 
 const dayNum = (s: string) => Math.round(Date.parse(s + "T00:00:00Z") / 86400000);
 const addDays = (iso: string, n: number) => new Date((dayNum(iso) + n) * 86400000).toISOString().slice(0, 10);
