@@ -446,3 +446,10 @@
 [data-sonner-toaster] [data-sonner-toast].cn-toast[data-styled="true"] [data-button]:focus-visible {
   box-shadow: 0 0 0 2px var(--ring);
 }
+
+/* Home: the page canvas behind <body> takes the hero blue. iOS 26 Safari tints its top bar from the page
+   background (theme-color is ignored there), and pulling down past the top shows blue, not black.
+   <body> keeps its own background, so the rest of the page is unchanged. */
+html:has(.hero-surface) {
+  background-color: var(--hero-from);
+}
