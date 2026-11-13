@@ -219,9 +219,10 @@ function FilterForm({ filters, clients, onApply }: { filters: Filters; clients: 
           />
         </Section>
         <Section label="Date range">
-          <div className="grid grid-cols-2 gap-3">
+          {/* iOS gives date inputs a wide intrinsic width; stack on phones and let them shrink so they never overlap. */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {(["from", "to"] as const).map((k) => (
-              <Field key={k} data-invalid={badRange} className="gap-1">
+              <Field key={k} data-invalid={badRange} className="min-w-0 gap-1">
                 <FieldLabel htmlFor={`filter-${k}`} className={LABEL}>
                   {k === "from" ? "From" : "To"}
                 </FieldLabel>
@@ -231,7 +232,7 @@ function FilterForm({ filters, clients, onApply }: { filters: Filters; clients: 
                   value={draft[k] ?? ""}
                   aria-invalid={badRange}
                   onChange={(e) => set({ [k]: e.target.value || undefined })}
-                  className="h-11 w-full"
+                  className="h-11 w-full min-w-0 appearance-none text-left [&::-webkit-date-and-time-value]:text-left"
                 />
               </Field>
             ))}

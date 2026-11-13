@@ -253,7 +253,7 @@ function Form({
           </Field>
         )}
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
           <Field>
             <FieldLabel htmlFor={`${id}-interval`} className="label">Billing</FieldLabel>
             <NativeSelect id={`${id}-interval`} className={NATIVE} value={interval} onChange={(e) => setInterval_(e.target.value as BillingInterval)}>

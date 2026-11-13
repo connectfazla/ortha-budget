@@ -453,3 +453,16 @@
 html:has(.hero-surface) {
   background-color: var(--hero-from);
 }
+
+/* iOS Safari gives native date inputs a wide intrinsic width and centred text, so in a two-column row they
+   spill into their neighbour. Let them shrink to the column and read left-aligned like every other field. */
+@layer base {
+  input[type="date"] {
+    min-width: 0;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+  }
+}
