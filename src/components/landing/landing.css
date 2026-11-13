@@ -1,9 +1,42 @@
-/* Hallmark · v2.0.0 · theme: custom · idea: "the page is the ledger: every claim is an entry with an amount, shown in the app's own rows" · vibe: "a ledger that fits in your pocket" · genre: modern-minimal · job: sign up · paper: --background (project token, warm grey, dark mode via .dark) · accent: --brand indigo, Restrained (primary action, focus ring, logo arc) · faces: Geist Sans display and body, Geist Mono for figures only · hero: app welcome screen, the home screen above the action on phones, beside it on desktop · posture: left-biased split · axes: light/grotesk/chromatic-indigo · nav: wordmark left, two text links right, no button · footer: one line, wordmark and three links · imagery: real captures 4 from scripts/capture-screens.mjs, three phone screens in an iPhone 16 Pro frame and one desktop report in a plain figure · deal: none (custom) */
-/* Hallmark · pre-emit critique: P4 H4 E4 S4 R5 V4 · weakest: S, a pocket ledger could be any money app; the six-kind ledger table and the RLS policy from schema.sql carry the specifics */
+/* Hallmark · v2.0.0 · redesign: full · theme: brand (kept) · idea: "the page is the ledger: every claim is an entry, and the credits are entries too" · vibe: "a ledger that fits in your pocket, in ink-blue" · genre: modern-minimal · job: sign up · paper: --background (project token, light by default, dark via .dark) · accent: Committed, --field indigo carries the hero and the closing band, --tint the ledger band, --brand stays the signal (links, focus, logo arc), --money-in stays semantic · faces: Geist Sans display and body, Geist Mono for figures and the repo path only · hero: indigo field, head left, the home screen on the right breaking out of the band's bottom edge on desktop and peeking above the head on phones · posture: left-biased split · axes: light/grotesk/chromatic-indigo · nav: wordmark left, two text links right, on the field · footer: wordmark and three links, then the credits line and the Light/Dark/System switch · imagery: real captures 4 from scripts/capture-screens.mjs, three phone screens in an iPhone 16 Pro frame and one desktop report in a plain figure · modes: light+dark, light by default · contrast: pass (field ink 8.9:1 light, 13.7:1 dark; field muted 6.1:1 and 8.0:1; signal 4.7:1 and 6.0:1; tint text 15.7:1, muted 5.3:1, money-in 4.9:1) · deal: none (brand kept) */
+/* Hallmark · pre-emit critique: P4 H5 E4 S4 R5 V4 · weakest: E, the field and tint are the only new material; the phone breaking the band's edge and the colophon set as ledger rows carry the rest */
 /* Hallmark · waive 47b · three iPhone frames, each holding a real capture of the app with sample data · waiver 11: owner requested a real iPhone frame for the app screens on this welcome page */
-/* Hallmark · answered F4: two filled primaries (hero and closing band) repeat the one action, as the sign-up anatomy asks */
+/* Hallmark · answered F4: two filled primaries (hero and closing band) repeat the one action, as the sign-up anatomy asks; both sit on the field, so the primary is the paper button there */
+/* Hallmark · accent refs: Wise and Jeton heroes on a solid brand field (Mobbin sections 60a7108e, 21fcb8eb); Lovart and Cursor footers carry a compact icon theme switch (44d05bc1, 956c4125); Current's footer carries the studio credit (33353d30) */
 
-/* Colours and faces come from globals.css tokens through Tailwind utilities; nothing is declared here. */
+/* Field tokens. Indigo from the --brand hue, deepened so paper-white text holds 8.9:1; the dark side keeps the hue and drops lightness. */
+:root {
+  --field: light-dark(#3236a6, #1c1e55);
+  --field-ink: light-dark(#f7f7ff, #f1f2f4);
+  --field-muted: light-dark(#c9ccfa, #b4b8ea);
+  --field-signal: light-dark(#aab0ff, #a3aaff);
+  --field-rule: light-dark(#4a4fbb, #2e3170);
+  --field-cta: var(--field-ink);
+  --field-cta-ink: light-dark(#23268a, #1c1e55);
+  --field-cta-hover: light-dark(#e4e6ff, #d9dcff);
+  /* The ledger band: a wash of the same hue. */
+  --tint: light-dark(#eceefc, #13152e);
+  --tint-rule: light-dark(#d3d6f5, #282c5e);
+}
+
+/* A field re-declares the project tokens, so the logo, links, focus ring and hairlines inside it follow without new classes. */
+.landing-field {
+  --background: var(--field);
+  --foreground: var(--field-ink);
+  --muted-foreground: var(--field-muted);
+  --brand: var(--field-signal);
+  --ring: var(--field-signal);
+  --border: var(--field-rule);
+  --input: var(--field-signal);
+  --muted: var(--field-rule);
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.landing-tint {
+  --border: var(--tint-rule);
+  background-color: var(--tint);
+}
 
 /* The one reveal: hero settles once on load. Visible without JS (pure CSS), off under reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
@@ -32,7 +65,7 @@
   outline-offset: -1px;
 }
 
-/* On phones the hero visual is cropped by the fold, fading into the page like an app's welcome screen. */
+/* On phones the hero visual is cropped by the fold, fading into the field like an app's welcome screen. */
 @media (max-width: 1023.98px) {
   .landing-peek {
     mask-image: linear-gradient(to bottom, var(--foreground) 70%, transparent);
@@ -58,4 +91,12 @@
 /* The phone's soft shadow, from the elevation tokens so it deepens in dark mode. */
 .landing-device {
   filter: drop-shadow(0 2px 3px var(--elev-mid)) drop-shadow(0 24px 32px var(--elev-deep));
+}
+
+/* Social kit artboards (/welcome/social): fixed CSS size, rendered at 2x by scripts/social-kit.mjs. */
+.social-board {
+  position: relative;
+  overflow: clip;
+  width: var(--w);
+  height: var(--h);
 }

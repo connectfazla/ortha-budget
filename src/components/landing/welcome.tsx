@@ -1,18 +1,26 @@
 import "./landing.css";
 import Link from "next/link";
+import Image from "next/image";
+import { Star } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { Money } from "@/components/money";
-import Image from "next/image";
 import { IPhone } from "@/components/landing/iphone";
+import { ThemeToggle } from "@/components/landing/theme-toggle";
 
 const REPO = "https://github.com/connectfazla/ortha-budget";
+const STUDIO = "https://ortha.studio";
+const DEV = "https://fazla.dev";
 
 const WRAP = "mx-auto w-full max-w-[1200px] px-4 sm:px-6 lg:px-10";
 const BTN =
-  "inline-flex h-12 items-center justify-center whitespace-nowrap rounded-lg px-6 text-[15px] font-medium transition-[transform,background-color,color] duration-150 ease-out landing-press motion-reduce:transition-none max-sm:w-full";
-const PRIMARY = `${BTN} bg-brand text-primary-foreground hover:bg-brand/90`;
-const SECONDARY = `${BTN} border bg-card text-foreground hover:bg-muted`;
+  "inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-6 text-[15px] font-medium transition-[transform,background-color,color] duration-150 ease-out landing-press motion-reduce:transition-none max-sm:w-full";
+/** The one primary: a paper button on the indigo field (hero and closing band). */
+const PRIMARY = `${BTN} bg-(--field-cta) text-(--field-cta-ink) hover:bg-(--field-cta-hover)`;
+/** Outline: hairline from --input and a --muted hover, which the field re-declares. */
+const SECONDARY = `${BTN} border border-input text-foreground hover:bg-muted`;
 const TEXT_LINK = "rounded-sm text-muted-foreground transition-colors duration-150 hover:text-foreground motion-reduce:transition-none";
+const INK_LINK =
+  "rounded-sm font-medium text-foreground underline decoration-brand decoration-2 underline-offset-4 transition-colors duration-150 hover:decoration-foreground motion-reduce:transition-none";
 const H2 = "min-w-0 text-[clamp(2rem,4vw,3rem)] leading-[1.05] font-semibold tracking-[-0.03em] text-balance [overflow-wrap:break-word]";
 const LEDE = "text-muted-foreground text-lg leading-relaxed text-pretty";
 
@@ -20,42 +28,52 @@ const LEDE = "text-muted-foreground text-lg leading-relaxed text-pretty";
 const KINDS = [
   { kind: "Subscription", example: "Hosting, monthly", value: 20, currency: "USD", note: "Next renewal date and yearly cost" },
   { kind: "Lifetime deal", example: "Icon library, paid once", value: 299, currency: "USD", note: "Months until it pays for itself" },
-  { kind: "Contractor", example: "Developer, paid in euros", value: 1200, currency: "EUR", note: "Converted to USD at a rate you can edit" },
+  { kind: "Contractor", example: "Developer, paid in euros", value: 1200, currency: "EUR", note: "Converted to your base currency at a rate you can edit" },
   { kind: "One-time", example: "Conference ticket", value: 400, currency: "USD", note: "Logged on the day, no schedule" },
   { kind: "Expense", example: "Coworking day pass", value: 25, currency: "GBP", note: "Counted against its category budget" },
   { kind: "Income", example: "Retainer from a client", value: 3000, currency: "USD", note: "Tagged to the client for profit", in: true },
 ];
 
+/** The colophon, set as ledger rows: who made it and on what terms. */
+const CREDITS = [
+  { label: "License", href: `${REPO}/blob/main/LICENSE`, text: "MIT License", note: "Use it, change it and ship it. Keep the copyright notice." },
+  { label: "Source code", href: REPO, text: "connectfazla/ortha-budget", mono: true, note: "Next.js, Supabase and Postgres row-level security." },
+  { label: "Self-host", href: `${REPO}#self-host`, text: "Read the self-host guide", note: "Bring a Supabase project and a Vercel account, then follow the four steps in the README." },
+  { label: "Made by", href: STUDIO, text: "Ortha Studio", note: "A design and engineering studio." },
+  { label: "Developed by", href: DEV, text: "fazla.dev" },
+];
+
 export function Welcome() {
   return (
     <div className="landing bg-background text-foreground min-h-dvh">
-      <header className={`${WRAP} flex h-14 items-center justify-between lg:h-16`}>
-        <Link href="/welcome" aria-label="Budget Ortha home" className="rounded-sm">
-          <Logo />
-        </Link>
-        <nav className="flex items-center gap-6 text-[15px]">
-          <a href={REPO} className={`${TEXT_LINK} max-sm:hidden`}>
-            GitHub
-          </a>
-          <Link href="/sign-in" className={TEXT_LINK}>
-            Sign in
+      {/* The indigo field: nav and hero. On desktop the phone breaks out of the band's bottom edge. */}
+      <div className="landing-field">
+        <header className={`${WRAP} flex h-14 items-center justify-between lg:h-16`}>
+          <Link href="/welcome" aria-label="Budget Ortha home" className="rounded-sm">
+            <Logo />
           </Link>
-        </nav>
-      </header>
+          <nav className="flex items-center gap-6 text-[15px]">
+            <a href={REPO} rel="noopener" className={`${TEXT_LINK} max-sm:hidden`}>
+              GitHub
+            </a>
+            <Link href="/sign-in" className={TEXT_LINK}>
+              Sign in
+            </Link>
+          </nav>
+        </header>
 
-      <main>
         {/* Hero. Phones: the home screen on top, cropped by the fold, then the head and the actions, like an app's welcome screen. */}
-        <section className={`${WRAP} flex min-h-[calc(100svh-3.5rem)] flex-col pb-6 lg:grid lg:min-h-0 lg:grid-cols-12 lg:items-center lg:gap-10 lg:pt-10 lg:pb-24`}>
-          <div className="landing-peek landing-rise flex max-h-[38svh] min-h-40 flex-1 justify-center overflow-hidden pt-2 lg:order-last lg:col-span-5 lg:col-start-8 lg:max-h-none lg:overflow-visible lg:pt-0" style={{ "--i": 2 } as React.CSSProperties}>
+        <section className={`${WRAP} flex h-[calc(100svh-3.5rem)] min-h-[560px] flex-col pb-8 lg:grid lg:h-auto lg:min-h-0 lg:grid-cols-12 lg:items-center lg:gap-10 lg:pt-10 lg:pb-0`}>
+          <div className="landing-peek landing-rise relative z-10 flex min-h-40 flex-1 justify-center overflow-hidden pt-2 lg:order-last lg:col-span-5 lg:col-start-8 lg:-mb-40 lg:max-h-none lg:overflow-visible lg:pt-0" style={{ "--i": 2 } as React.CSSProperties}>
             <IPhone
               hero
               src="/landing/home.png"
               alt="Budget Ortha home screen on an iPhone: $487 net in November, money in and out, and the payments coming up in the next 30 days"
-              sizes="(min-width: 1024px) 296px, 278px"
-              className="w-[300px] shrink-0 max-lg:[filter:none] lg:w-[320px]"
+              sizes="(min-width: 1024px) 315px, 278px"
+              className="w-[300px] shrink-0 max-lg:[filter:none] lg:w-[340px]"
             />
           </div>
-          <div className="pt-4 lg:col-span-6 lg:pt-0">
+          <div className="pt-4 lg:col-span-6 lg:pt-0 lg:pb-40">
             <h1 className="landing-rise max-w-[13ch] min-w-0 text-[clamp(2.25rem,6vw,4.75rem)] leading-[1.02] font-semibold tracking-[-0.04em] text-balance [overflow-wrap:break-word]">
               A pocket ledger for your agency.
             </h1>
@@ -66,23 +84,25 @@ export function Welcome() {
               <Link href="/sign-up" className={PRIMARY}>
                 Create account
               </Link>
-              <a href={REPO} className={SECONDARY}>
+              <a href={REPO} rel="noopener" className={SECONDARY}>
                 View on GitHub
               </a>
             </div>
           </div>
         </section>
+      </div>
 
-        {/* Renewals and the calendar feed. */}
-        <section className={`${WRAP} grid items-center gap-12 py-24 lg:grid-cols-12 lg:gap-10 lg:py-32`}>
-          <div className="lg:col-span-5">
+      <main>
+        {/* Renewals and the calendar feed. Phone left, so it doesn't stack under the hero's. */}
+        <section className={`${WRAP} grid items-center gap-12 py-24 lg:grid-cols-12 lg:gap-10 lg:pt-56 lg:pb-32`}>
+          <div className="lg:col-span-5 lg:col-start-8">
             <h2 className={`${H2} max-w-[16ch]`}>Every renewal, before it bills you</h2>
             <p className={`mt-5 max-w-[42ch] ${LEDE}`}>
               Each subscription keeps its next due date and its yearly cost. Turn on the calendar feed and renewals sit in
               your calendar beside your meetings.
             </p>
           </div>
-          <div className="flex justify-center lg:col-span-6 lg:col-start-7">
+          <div className="flex justify-center lg:order-first lg:col-span-6">
             <IPhone
               src="/landing/subscriptions.png"
               alt="Subscriptions screen on an iPhone: $89 a month in tools, a Notion trial ending Nov 18 and Figma due in 3 days"
@@ -92,8 +112,8 @@ export function Welcome() {
           </div>
         </section>
 
-        {/* The ledger itself: one row per kind of entry. Change of paper marks the seam. */}
-        <section className="bg-card border-y">
+        {/* The ledger itself: one row per kind of entry, on the indigo wash. */}
+        <section className="landing-tint">
           <div className={`${WRAP} grid gap-10 py-24 lg:grid-cols-12 lg:py-32`}>
             <div className="lg:col-span-4">
               <h2 className={`${H2} max-w-[12ch]`}>Six kinds of entry, one ledger</h2>
@@ -153,9 +173,9 @@ export function Welcome() {
           </figure>
         </section>
 
-        {/* Private by design, open source. The real policy from supabase/schema.sql. */}
+        {/* Private by design. The real policy from supabase/schema.sql. */}
         <section className="border-t">
-          <div className={`${WRAP} grid gap-12 py-24 lg:grid-cols-12 lg:gap-10 lg:py-32`}>
+          <div className={`${WRAP} grid gap-12 py-24 lg:grid-cols-12 lg:items-center lg:gap-10 lg:py-32`}>
             <div className="lg:col-span-5">
               <h2 className={`${H2} max-w-[14ch]`}>Only you can read your rows</h2>
               <p className={`mt-5 max-w-[42ch] ${LEDE}`}>
@@ -163,32 +183,52 @@ export function Welcome() {
                 bug in its code can’t reach another account.
               </p>
             </div>
-            <div className="grid min-w-0 gap-10 lg:col-span-6 lg:col-start-7">
-              <figure className="bg-card min-w-0 overflow-hidden rounded-xl border">
-                <figcaption className="text-muted-foreground border-b px-4 py-2.5 text-sm">supabase/schema.sql</figcaption>
-                <pre className="overflow-x-auto p-4 font-mono text-[13px] leading-6">
-                  <code>{`create policy own_transactions on transactions
+            <figure className="bg-card min-w-0 overflow-hidden rounded-xl border lg:col-span-6 lg:col-start-7">
+              <figcaption className="text-muted-foreground border-b px-4 py-2.5 text-sm">supabase/schema.sql</figcaption>
+              <pre className="overflow-x-auto p-4 font-mono text-[13px] leading-6">
+                <code>{`create policy own_transactions on transactions
   for all to authenticated
   using (user_id = ((select auth.jwt()) ->> 'sub'));`}</code>
-                </pre>
-              </figure>
-              <div>
-                <h3 className="text-xl font-semibold tracking-tight">Run it on your own accounts</h3>
-                <p className="text-muted-foreground mt-2 max-w-[48ch] leading-relaxed text-pretty">
-                  MIT licensed. Bring a Supabase project and a Vercel account, then follow the four steps in
-                  the README.
-                </p>
-                <a href={`${REPO}#self-host`} className={`${TEXT_LINK} text-foreground mt-4 inline-block underline underline-offset-4`}>
-                  Read the self-host guide
-                </a>
-              </div>
-            </div>
+              </pre>
+            </figure>
           </div>
         </section>
 
-        {/* Close: the hero's action again. */}
-        <section className="bg-card border-y">
-          <div className={`${WRAP} flex flex-col items-start gap-8 py-20 lg:flex-row lg:items-center lg:justify-between lg:py-24`}>
+        {/* Open source and credits: the colophon as ledger rows. */}
+        <section id="open-source" aria-labelledby="open-source-title" className="border-t">
+          <div className={`${WRAP} grid gap-12 py-24 lg:grid-cols-12 lg:gap-10 lg:py-32`}>
+            <div className="lg:col-span-5">
+              <h2 id="open-source-title" className={`${H2} max-w-[12ch]`}>
+                Open source under MIT
+              </h2>
+              <p className={`mt-5 max-w-[40ch] ${LEDE}`}>
+                The code is public on GitHub. Read how it works, run it on your own accounts, or send a fix.
+              </p>
+              <a href={REPO} rel="noopener" className={`${SECONDARY} mt-8`}>
+                <Star aria-hidden className="text-brand size-4" />
+                Star on GitHub
+              </a>
+              <p className="text-muted-foreground mt-3 text-sm">A star helps other agencies find it.</p>
+            </div>
+            <dl className="min-w-0 lg:col-span-6 lg:col-start-7">
+              {CREDITS.map((c) => (
+                <div key={c.label} className="grid gap-1 border-t py-5 first:border-t-0 first:pt-0 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-6 lg:first:pt-2">
+                  <dt className="text-muted-foreground text-[15px]">{c.label}</dt>
+                  <dd className="min-w-0">
+                    <a href={c.href} rel="noopener" className={`${INK_LINK} text-[17px] ${c.mono ? "font-mono text-[15px] break-all" : ""}`}>
+                      {c.text}
+                    </a>
+                    {c.note ? <p className="text-muted-foreground mt-1.5 text-[15px] leading-relaxed text-pretty">{c.note}</p> : null}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </section>
+
+        {/* Close: the hero's action again, back on the field. */}
+        <section className="landing-field">
+          <div className={`${WRAP} flex flex-col items-start gap-8 py-20 lg:flex-row lg:items-center lg:justify-between lg:py-28`}>
             <h2 className={H2}>Start with one subscription.</h2>
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
               <Link href="/sign-up" className={PRIMARY}>
@@ -202,18 +242,39 @@ export function Welcome() {
         </section>
       </main>
 
-      <footer className={`${WRAP} flex flex-col gap-4 py-10 text-[15px] sm:flex-row sm:items-center sm:justify-between`}>
-        <Logo />
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <a href={REPO} className={TEXT_LINK}>
-            GitHub
-          </a>
-          <a href={`${REPO}/blob/main/LICENSE`} className={TEXT_LINK}>
-            MIT License
-          </a>
-          <Link href="/sign-in" className={TEXT_LINK}>
-            Sign in
-          </Link>
+      <footer className={`${WRAP} py-10 text-[15px]`}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Logo />
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <a href={REPO} rel="noopener" className={TEXT_LINK}>
+              GitHub
+            </a>
+            <a href={`${REPO}/blob/main/LICENSE`} rel="noopener" className={TEXT_LINK}>
+              MIT License
+            </a>
+            <Link href="/sign-in" className={TEXT_LINK}>
+              Sign in
+            </Link>
+          </div>
+        </div>
+        <div className="mt-8 flex flex-col gap-5 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-muted-foreground leading-relaxed">
+            Made by{" "}
+            <a href={STUDIO} rel="noopener" className={INK_LINK}>
+              Ortha Studio
+            </a>
+            . Developed by{" "}
+            <a href={DEV} rel="noopener" className={INK_LINK}>
+              fazla.dev
+            </a>
+            .
+          </p>
+          <div className="flex items-center gap-3">
+            <span aria-hidden className="text-muted-foreground text-sm">
+              Appearance
+            </span>
+            <ThemeToggle />
+          </div>
         </div>
       </footer>
     </div>
