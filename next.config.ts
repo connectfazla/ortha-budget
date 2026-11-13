@@ -12,8 +12,14 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // web-push is CommonJS; bundled by Turbopack it has no default export, which src/lib/push/send.ts imports.
+  serverExternalPackages: ["web-push"],
   async headers() {
-    return [{ source: "/(.*)", headers: securityHeaders }];
+    return [
+      { source: "/(.*)", headers: securityHeaders },
+      // The browser must always fetch a fresh service worker, or push fixes never reach installed apps.
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }, { key: "Content-Type", value: "application/javascript; charset=utf-8" }] },
+    ];
   },
   // Every page is per-user and reads auth cookies, so Cache Components / static prerender buy nothing here.
   turbopack: {

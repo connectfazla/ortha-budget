@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   title: { default: "Ortha Budget", template: "%s · Ortha Budget" },
   description: "Mobile-first budget tracker for agencies: subscriptions, lifetime deals, contractors and expenses.",
   appleWebApp: { capable: true, title: "Budget", statusBarStyle: "default" },
+  // Next 16 renders appleWebApp.capable as the generic mobile-web-app-capable; older iOS only reads the apple- name.
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = {

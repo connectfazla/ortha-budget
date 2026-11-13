@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Public routes: the welcome page (and its OG image), sign-in / sign-up, the auth callback, the PWA manifest
 // and the calendar feed (calendar apps can't log in; its secret token is the access control).
-const PUBLIC = [/^\/welcome(\/|$)/, /^\/sign-in(\/|$)/, /^\/sign-up(\/|$)/, /^\/auth\//, /^\/manifest\.webmanifest$/, /^\/api\/calendar\//];
+const PUBLIC = [/^\/welcome(\/|$)/, /^\/sign-in(\/|$)/, /^\/sign-up(\/|$)/, /^\/auth\//, /^\/manifest\.webmanifest$/, /^\/api\/calendar\//, /^\/api\/cron\//, /^\/sw\.js$/];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

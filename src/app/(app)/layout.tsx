@@ -1,5 +1,6 @@
 import { CommandPalette } from "@/components/command/command-palette";
 import { BottomBar } from "@/components/shell/bottom-bar";
+import { ServiceWorker } from "@/components/shell/service-worker";
 import { Sidebar } from "@/components/shell/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getCategories, getClients, getContractors, getSettings, getUserEmail, requireUser } from "@/lib/data";
@@ -20,6 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </main>
         <CommandPalette contractors={contractors} categories={categories} clients={clients} baseCurrency={base} />
         <BottomBar contractors={contractors} categories={categories} clients={clients} baseCurrency={base} />
+        <ServiceWorker />
       </div>
     </TooltipProvider>
   );

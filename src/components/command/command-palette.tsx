@@ -7,7 +7,7 @@
 // Ctrl/Cmd+K opens it. n = new transaction, g then h/t/s/r = go to a page, ? = shortcut list.
 
 import { Fragment, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { BarChart3, FileUp, Gift, Home, ListOrdered, MoonIcon, PiggyBank, Plus, Repeat, SearchIcon, Settings, Users, type LucideIcon } from "lucide-react";
 import { AddEntryDrawer } from "@/components/entry/add-entry-drawer";
@@ -67,6 +67,17 @@ export function CommandPalette({
   const goAt = useRef(0);
 
   const addTransaction = () => addRef.current?.querySelector("button")?.click();
+
+  // ?add=1 (the evening reminder opens /transactions?add=1) opens the Add entry drawer once, then drops the param.
+  const params = useSearchParams();
+  const pathname = usePathname();
+  useEffect(() => {
+    if (params.get("add") !== "1") return;
+    addTransaction();
+    const rest = new URLSearchParams(params);
+    rest.delete("add");
+    router.replace(rest.size ? `${pathname}?${rest}` : pathname, { scroll: false });
+  }, [params, pathname, router]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

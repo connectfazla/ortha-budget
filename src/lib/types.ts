@@ -75,6 +75,13 @@ export type UserSettings = {
   cash_updated_at: string | null;
   calendar_token: string | null;
   base_currency: string; // ISO 4217; every *_base / limit / cash amount is in this currency
+  timezone: string; // IANA, used for notification hours
+  notify_renewals: boolean;
+  notify_trials: boolean;
+  notify_budgets: boolean;
+  notify_daily_log: boolean;
+  digest_hour: number; // 0–23 local
+  reminder_hour: number; // 0–23 local
 };
 
 export type PriceChange = {

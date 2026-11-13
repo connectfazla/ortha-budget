@@ -7,6 +7,7 @@ import { signOut } from "@/lib/actions";
 import { getSettings, getUserEmail, requireUser } from "@/lib/data";
 import { BaseCurrency } from "./base-currency";
 import { CalendarFeed } from "./calendar-feed";
+import { Notifications } from "./notifications";
 import { SettingsForm } from "./settings-form";
 import { ThemeSwitch } from "./theme-switch";
 
@@ -36,6 +37,19 @@ export default async function SettingsPage() {
         </Section>
         <Section title="Currency">
           <BaseCurrency current={base} />
+        </Section>
+        <Section title="Notifications">
+          <Notifications
+            prefs={{
+              timezone: settings.timezone,
+              notify_renewals: settings.notify_renewals,
+              notify_trials: settings.notify_trials,
+              notify_budgets: settings.notify_budgets,
+              notify_daily_log: settings.notify_daily_log,
+              digest_hour: settings.digest_hour,
+              reminder_hour: settings.reminder_hour,
+            }}
+          />
         </Section>
         <Section title="Calendar reminders">
           <CalendarFeed token={settings.calendar_token} />

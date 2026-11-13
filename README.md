@@ -52,7 +52,8 @@ Ortha Budget keeps each of those as its own kind of entry and answers three ques
 | | |
 |---|---|
 | **Subscriptions and retainers** | Monthly, quarterly, yearly or weekly plans with the next due date. One tap marks a charge paid, logs it and moves the date forward. Toggle between monthly and yearly cost. |
-| **Renewal reminders** | A private calendar feed (`.ics`) puts renewals, trial end dates and "cancel by" dates into Apple or Google Calendar. Your calendar sends the alerts. |
+| **Notifications** | Add it to your iPhone Home Screen and turn on notifications: a morning summary of renewals, trials, overdue charges and budgets, plus an evening reminder to log the day's expenses (skipped if you already did). You pick the hours. Works on Android and desktop too. |
+| **Calendar feed** | A private `.ics` feed puts renewals, trial end dates and "cancel by" dates into Apple or Google Calendar. |
 | **Trials, cancel-by and price changes** | Trials ending soon and plans you meant to cancel sit at the top. A price increase gets flagged with the date and the percentage. |
 | **Lifetime deals** | Each deal records what it replaces per month and shows how many months until it has paid for itself. |
 | **Contractors** | People, rates and payout history in their own currency, with the amount in your base currency next to it. |
@@ -75,7 +76,13 @@ You need a Supabase project and somewhere to run Next.js (Vercel works out of th
 3. **Env.** `cp .env.local.example .env.local` and fill in `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the publishable key) and `NEXT_PUBLIC_APP_TZ` (your timezone, e.g. `Europe/London`).
 4. **Run.** `npm install && npm run dev`, then open http://localhost:3000 and create an account. "Load sample data" on the empty dashboard fills it in so you can look around.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fconnectfazla%2Fortha-budget&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_APP_TZ)
+**Notifications (optional).**
+1. Generate push keys with `npx web-push generate-vapid-keys` and a random secret, then add them to the env (see `.env.local.example`).
+2. In the Supabase SQL Editor, store the same secret and your app's URL:
+   `insert into app_secrets (name, value) values ('push_cron', '<secret>'), ('push_cron_url', 'https://<your-app>/api/cron/push');`
+3. The schema already schedules an hourly `pg_cron` job that calls that URL.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fconnectfazla%2Fortha-budget&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_APP_TZ&optional-env=NEXT_PUBLIC_VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,PUSH_CRON_SECRET)
 
 ## Security
 
@@ -83,7 +90,7 @@ You need a Supabase project and somewhere to run Next.js (Vercel works out of th
 - **No admin key in the app.** The server talks to Supabase as the signed-in user. There is no service-role key anywhere, so a bug in app code can't reach another account's data.
 - **Checked input.** Every server action re-validates its input (types, enums, lengths, dates, ids) before it reaches the database. Composite foreign keys stop an entry from pointing at someone else's client, contractor or plan.
 - **Private files.** Receipts live in a private bucket under a folder named after your user id. Storage policies reject anything outside it, and files are only ever served through 60-second signed links.
-- **The one public endpoint** is the calendar feed. It answers only to a random 43-character token you can reset at any time, and it returns the same empty calendar for a wrong token as for an empty account.
+- **Two secret-gated endpoints.** The hourly notification job only runs with a 32+ character server secret (checked in constant time), and its database functions return nothing without it. The other is the calendar feed. It answers only to a random 43-character token you can reset at any time, and it returns the same empty calendar for a wrong token as for an empty account.
 - **Safe exports.** CSV cells are escaped, and spreadsheet formula injection is neutralised.
 - **Headers.** HSTS, `X-Frame-Options: DENY`, `frame-ancestors 'none'`, nosniff, a strict referrer policy and a locked-down permissions policy.
 

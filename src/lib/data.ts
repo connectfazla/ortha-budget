@@ -203,14 +203,29 @@ export const getClients = cache(async (): Promise<Client[]> => {
   return data as Client[];
 });
 
-const DEFAULT_SETTINGS: UserSettings = { tax_rate: 0, cash_on_hand: null, cash_updated_at: null, calendar_token: null, base_currency: "USD" };
+const DEFAULT_SETTINGS: UserSettings = {
+  tax_rate: 0,
+  cash_on_hand: null,
+  cash_updated_at: null,
+  calendar_token: null,
+  base_currency: "USD",
+  timezone: "UTC",
+  notify_renewals: true,
+  notify_trials: true,
+  notify_budgets: true,
+  notify_daily_log: true,
+  digest_hour: 9,
+  reminder_hour: 21,
+};
 
 /** The user's settings row, or defaults when they haven't saved any yet. */
 export const getSettings = cache(async (): Promise<UserSettings> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("user_settings")
-    .select("tax_rate, cash_on_hand, cash_updated_at, calendar_token, base_currency")
+    .select(
+      "tax_rate, cash_on_hand, cash_updated_at, calendar_token, base_currency, timezone, notify_renewals, notify_trials, notify_budgets, notify_daily_log, digest_hour, reminder_hour",
+    )
     .maybeSingle();
   if (error) fail("Load settings", error);
   return (data as UserSettings | null) ?? DEFAULT_SETTINGS;
@@ -257,4 +272,12 @@ export async function getAttachmentCounts(): Promise<Map<string, number>> {
   const m = new Map<string, number>();
   for (const r of data as { transaction_id: string }[]) m.set(r.transaction_id, (m.get(r.transaction_id) ?? 0) + 1);
   return m;
+}
+
+/** How many push subscriptions (devices) the user has turned on. */
+export async function getPushDeviceCount(): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await supabase.from("push_subscriptions").select("id", { count: "exact", head: true });
+  if (error) fail("Load push devices", error);
+  return count ?? 0;
 }

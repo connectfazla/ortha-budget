@@ -4,7 +4,9 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Ortha Budget",
     short_name: "Budget",
+    id: "/",
     start_url: "/",
+    scope: "/",
     display: "standalone",
     background_color: "#f5f6f8",
     theme_color: "#f5f6f8",

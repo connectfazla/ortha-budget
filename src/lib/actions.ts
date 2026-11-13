@@ -523,3 +523,84 @@ export async function signOut() {
   await (await createClient()).auth.signOut();
   redirect("/sign-in");
 }
+
+/* ---------- push notifications ---------- */
+
+export type PushSubscriptionInput = { endpoint: string; keys: { p256dh: string; auth: string }; userAgent?: string };
+
+/** Save this device's push subscription (one row per device/browser). */
+export async function savePushSubscription(sub: PushSubscriptionInput) {
+  return run(async () => {
+    const endpoint = text(sub?.endpoint, "Endpoint", { required: true, max: 1000 })!;
+    if (!/^https:\/\//.test(endpoint)) throw new Invalid("Invalid push endpoint");
+    const p256dh = text(sub?.keys?.p256dh, "Key", { required: true, max: 200 })!;
+    const authKey = text(sub?.keys?.auth, "Key", { required: true, max: 100 })!;
+    const supabase = await createClient();
+    // An endpoint belongs to one browser; if it was saved under this user before, replace it.
+    await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
+    return supabase
+      .from("push_subscriptions")
+      .insert({ endpoint, p256dh, auth: authKey, user_agent: text(sub.userAgent, "Device", { max: 300 }) });
+  });
+}
+
+export async function removePushSubscription(endpoint: string) {
+  return run(async () => (await createClient()).from("push_subscriptions").delete().eq("endpoint", text(endpoint, "Endpoint", { required: true, max: 1000 })!));
+}
+
+export type NotificationPrefsInput = {
+  timezone: string;
+  notify_renewals: boolean;
+  notify_trials: boolean;
+  notify_budgets: boolean;
+  notify_daily_log: boolean;
+  digest_hour: number;
+  reminder_hour: number;
+};
+
+export async function saveNotificationPrefs(i: NotificationPrefsInput) {
+  return run(async () => {
+    const tz = text(i.timezone, "Timezone", { required: true, max: 64 })!;
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    } catch {
+      throw new Invalid("Unknown timezone");
+    }
+    const hour = (v: unknown, f: string) => {
+      const n = Number(v);
+      if (!Number.isInteger(n) || n < 0 || n > 23) throw new Invalid(`${f} must be an hour 0–23`);
+      return n;
+    };
+    return (await createClient()).from("user_settings").upsert(
+      {
+        timezone: tz,
+        notify_renewals: Boolean(i.notify_renewals),
+        notify_trials: Boolean(i.notify_trials),
+        notify_budgets: Boolean(i.notify_budgets),
+        notify_daily_log: Boolean(i.notify_daily_log),
+        digest_hour: hour(i.digest_hour, "Morning summary"),
+        reminder_hour: hour(i.reminder_hour, "Evening reminder"),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+  });
+}
+
+/** Sends a test notification to every device this user has turned on. */
+export async function sendTestPush(): Promise<ActionResult & { sent?: number }> {
+  if (!(await signedIn())) return { ok: false, error: "Not signed in" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("push_subscriptions").select("endpoint, p256dh, auth");
+  if (error) return { ok: false, error: error.message };
+  if (!data?.length) return { ok: false, error: "Turn on notifications on this device first" };
+  const { sendPush } = await import("@/lib/push/send");
+  let sent = 0;
+  for (const t of data) {
+    const r = await sendPush(t, { title: "Notifications are on", body: "You'll get renewals, trials and a daily reminder here.", url: "/settings", tag: "test", badge: 0 });
+    if (r === "sent") sent++;
+    if (r === "gone") await supabase.from("push_subscriptions").delete().eq("endpoint", t.endpoint);
+  }
+  return sent ? { ok: true, sent } : { ok: false, error: "Couldn't reach this device. Turn notifications off and on again." };
+}
+
