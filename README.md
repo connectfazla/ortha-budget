@@ -45,14 +45,16 @@ Budget Ortha keeps each of those as its own kind of entry and answers three ques
 
 <table>
   <tr>
-    <td width="33%"><img src="docs/screenshots/home.webp" alt="Dashboard: net this month, money in and out, and the next 30 days of charges" /></td>
-    <td width="33%"><img src="docs/screenshots/subscriptions.webp" alt="Subscriptions: monthly and yearly cost, trials ending, due dates and mark paid" /></td>
-    <td width="33%"><img src="docs/screenshots/clients.webp" alt="Client page: income, costs and margin for one client" /></td>
+    <td width="25%"><img src="docs/screenshots/home.webp" alt="Home: net this month on a blue gradient, quick actions, money in and out" /></td>
+    <td width="25%"><img src="docs/screenshots/transactions.webp" alt="Transactions grouped by day, with a contractor payout shown in BDT and dollars" /></td>
+    <td width="25%"><img src="docs/screenshots/subscriptions.webp" alt="Subscriptions: monthly cost, trials ending, due dates and mark paid" /></td>
+    <td width="25%"><img src="docs/screenshots/profile.webp" alt="Profile: photo and name, reports, budgets and settings" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Home</sub></td>
+    <td align="center"><sub>Transactions</sub></td>
     <td align="center"><sub>Subscriptions</sub></td>
-    <td align="center"><sub>Profit per client</sub></td>
+    <td align="center"><sub>Profile</sub></td>
   </tr>
 </table>
 
@@ -63,6 +65,9 @@ Budget Ortha keeps each of those as its own kind of entry and answers three ques
 | | |
 |---|---|
 | **Subscriptions and retainers** | Monthly, quarterly, yearly or weekly plans with the next due date. One tap marks a charge paid, logs it and moves the date forward. Toggle between monthly and yearly cost. |
+| **Quick add** | The ＋ button adds an expense, income, one-time purchase, lifetime deal or contractor payout. Choose Subscription and it becomes a repeating plan, with an option to log today's charge. |
+| **Categories** | A fixed set with icons (Software, Hosting, AI, Marketing, Contractors, Travel and more, plus Client work and Retainer for income). Add your own when you need one. |
+| **Light, dark and system** | Pick the look after sign-up and change it any time under Profile. |
 | **Notifications** | Add it to your iPhone Home Screen and turn on notifications: a morning summary of renewals, trials, overdue charges and budgets, plus an evening reminder to log the day's expenses (skipped if you already did). You pick the hours. Works on Android and desktop too. The first time you sign in on a device, a short prompt offers to turn it on. |
 | **Profile photo and name** | Add a photo and a name on the Profile page. Without a name, the part of your email before the @ is used. |
 | **Second currency** | Show a small converted amount under totals, such as ৳58,420 under $480, at a daily rate. Turn it on under Profile, Money. |

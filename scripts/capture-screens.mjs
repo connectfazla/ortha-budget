@@ -8,7 +8,9 @@ import { chromium } from "playwright";
 import sharp from "sharp";
 import { randomUUID } from "node:crypto";
 
-const BASE = process.argv[2] ?? "http://localhost:3000";
+// --demo logs into the shared demo account (six months of data) instead of signing up a fresh one.
+const DEMO = process.argv.includes("--demo");
+const BASE = process.argv.slice(2).find((a) => !a.startsWith("--")) ?? "http://localhost:3000";
 const OUT = new URL("../public/landing/", import.meta.url);
 const W = 393, H = 852, STATUS = 54, SAFE_BOTTOM = 34, DPR = 3;
 // Dev indicator off; the account email (sidebar on desktop) hidden so no address reaches a capture.
@@ -97,6 +99,11 @@ async function phoneShot(path, file, { fullBleed = false } = {}) {
   }
 }
 
+if (DEMO) {
+  await page.goto(BASE + "/sign-in");
+  await page.getByRole("button", { name: "Try the demo" }).click();
+  await page.waitForURL((u) => !u.pathname.startsWith("/sign-"), { timeout: 30_000 });
+} else {
 await page.goto(BASE + "/sign-up");
 await page.getByLabel("Email").fill(`demo+${Date.now()}@example.com`);
 await page.getByLabel("Password", { exact: true }).fill(`Demo-${randomUUID()}`);
@@ -113,9 +120,12 @@ if (await look.isVisible()) {
 }
 await page.getByRole("button", { name: "Load sample data" }).click();
 await page.getByRole("heading", { name: "Know what you owe before it is due." }).waitFor({ state: "detached", timeout: 30_000 });
+}
 
 await phoneShot("/", "home.png", { fullBleed: true });
 await phoneShot("/subscriptions", "subscriptions.png");
+await phoneShot("/transactions", "transactions.png");
+await phoneShot("/profile", "profile.png");
 await settle(page, "/clients");
 const client = await page.locator('a[href^="/clients/"]').first().getAttribute("href");
 await phoneShot(client, "clients.png");
