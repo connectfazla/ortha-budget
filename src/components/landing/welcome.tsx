@@ -52,7 +52,7 @@ export function Welcome() {
           <Link href="/welcome" aria-label="Budget Ortha home" className="rounded-sm">
             <Logo />
           </Link>
-          <nav className="flex items-center gap-6 text-[15px]">
+          <nav className="flex items-center gap-6 pr-4 text-[15px]">
             <a href={REPO} rel="noopener" className={`${TEXT_LINK} max-sm:hidden`}>
               GitHub
             </a>
