@@ -31,6 +31,7 @@ export function IPhone({
   alt,
   sizes,
   hero = false,
+  unoptimized = false,
   className,
 }: {
   src: string;
@@ -38,6 +39,8 @@ export function IPhone({
   /** Rendered width of the screen (about 92.5% of the phone's width). */
   sizes: string;
   hero?: boolean;
+  /** Serve the original screenshot (no re-compression); used by the social images, which are shot at 4x. */
+  unoptimized?: boolean;
   className?: string;
 }) {
   const id = useId();
@@ -90,7 +93,7 @@ export function IPhone({
           borderRadius: `${pct(55, SCREEN_W)} / ${pct(55, SCREEN_H)}`,
         }}
       >
-        <Image src={src} alt={alt} fill sizes={sizes} className="object-cover" {...(hero ? { loading: "eager", fetchPriority: "high" } : {})} />
+        <Image src={src} alt={alt} fill sizes={sizes} unoptimized={unoptimized} className="object-cover" {...(hero ? { loading: "eager", fetchPriority: "high" } : {})} />
       </div>
       <div
         aria-hidden="true"

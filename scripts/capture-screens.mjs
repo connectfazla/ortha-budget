@@ -99,6 +99,9 @@ async function phoneShot(path, file, { fullBleed = false } = {}) {
   }
 }
 
+// Signed out, before any login, so the sign-in screen shows its own form.
+await phoneShot("/sign-in", "sign-in.png");
+
 if (DEMO) {
   await page.goto(BASE + "/sign-in");
   await page.getByRole("button", { name: "Try the demo" }).click();
@@ -125,6 +128,7 @@ await page.getByRole("heading", { name: "Know what you owe before it is due." })
 await phoneShot("/", "home.png", { fullBleed: true });
 await phoneShot("/subscriptions", "subscriptions.png");
 await phoneShot("/transactions", "transactions.png");
+await phoneShot("/lifetime", "lifetime.png");
 await phoneShot("/profile", "profile.png");
 await settle(page, "/clients");
 const client = await page.locator('a[href^="/clients/"]').first().getAttribute("href");

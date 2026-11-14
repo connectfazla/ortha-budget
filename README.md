@@ -7,7 +7,7 @@
 **A pocket ledger for your agency.**
 Track software subscriptions, client retainers, contractor payments and profit per client, in any currency. Free, open source and self-hostable, with a mobile app you install from the browser.
 
-[Live app](https://ortha-budget.vercel.app) ·
+[Live app](https://budget.ortha.studio) ·
 [Self-host](#self-host-it-free) ·
 [How the security works](#security) ·
 [Report a vulnerability](SECURITY.md)
@@ -28,7 +28,7 @@ Track software subscriptions, client retainers, contractor payments and profit p
 
 ## Try it
 
-Open **[ortha-budget.vercel.app](https://ortha-budget.vercel.app)** and tap **Try the demo** on the sign-in page, or sign in yourself:
+Open **[budget.ortha.studio](https://budget.ortha.studio)** and tap **Try the demo** on the sign-in page, or sign in yourself:
 
 | | |
 |---|---|

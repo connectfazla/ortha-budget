@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: { absolute: "Budget Ortha, a pocket ledger for your agency" },
   description:
     "Track subscriptions, lifetime deals, contractor pay and profit per client in any currency. Private by design, open source and self-hostable.",
+  alternates: { canonical: "/welcome" },
 };
 
 export default function WelcomePage() {

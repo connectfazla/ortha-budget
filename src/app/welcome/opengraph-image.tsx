@@ -15,9 +15,12 @@ const GLOW = "radial-gradient(circle at 950px 330px, rgba(31,77,255,1) 0px, rgba
 // The phone bezel mirrors iphone.tsx: black glass and the titanium rail.
 const BEZEL = { glass: "#050505", rail: "#b3afa8" };
 
-// Font: next/og bundles Geist Regular, which is the app's UI face.
+// Headline font: Inter Regular (OFL), vendored next to this file so the image renders the same everywhere.
 export default async function Image() {
-  const shot = await readFile(join(process.cwd(), "public/landing/home.png"));
+  const [shot, inter] = await Promise.all([
+    readFile(join(process.cwd(), "public/landing/home.png")),
+    readFile(join(process.cwd(), "src/app/welcome/Inter-Regular.ttf")),
+  ]);
   const src = `data:image/png;base64,${shot.toString("base64")}`;
   // The real home screen in a plain black bezel, rising out of the bottom edge, with the hero's one glow behind it.
   const phone = { w: 380, screenW: 356, top: 96 };
@@ -36,7 +39,7 @@ export default async function Image() {
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-            <div style={{ fontSize: 84, lineHeight: 1.02, letterSpacing: "-0.045em" }}>A pocket ledger for your agency.</div>
+            <div style={{ fontFamily: "Inter", fontWeight: 400, fontSize: 84, lineHeight: 1.04, letterSpacing: "-0.035em" }}>A pocket ledger for your agency.</div>
             <div style={{ fontSize: 28, color: FIELD.muted }}>Open source. Made by Ortha Studio.</div>
           </div>
         </div>
@@ -61,6 +64,6 @@ export default async function Image() {
         </div>
       </div>
     ),
-    size,
+    { ...size, fonts: [{ name: "Inter", data: inter, weight: 400, style: "normal" }] },
   );
 }
