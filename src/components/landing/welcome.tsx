@@ -18,7 +18,7 @@ const BTN =
 const PRIMARY = `${BTN} bg-(--cta) text-white hover:bg-(--cta-hover)`;
 /** Outline: hairline from --input and a --muted hover, which the black band re-declares. */
 const SECONDARY = `${BTN} border border-input text-foreground hover:bg-muted`;
-const TEXT_LINK = "rounded-sm text-muted-foreground transition-colors duration-150 hover:text-brand motion-reduce:transition-none";
+const TEXT_LINK = "shrink-0 whitespace-nowrap mr-4 rounded-sm text-muted-foreground transition-colors duration-150 hover:text-brand motion-reduce:transition-none";
 const INK_LINK =
   "rounded-sm font-medium text-foreground underline decoration-foreground/25 decoration-1 underline-offset-4 transition-colors duration-150 hover:text-brand hover:decoration-brand motion-reduce:transition-none";
 const H2 = "min-w-0 text-[clamp(2rem,4vw,3rem)] leading-[1.05] font-semibold tracking-[-0.03em] text-balance [overflow-wrap:break-word]";
